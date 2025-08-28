@@ -104,26 +104,28 @@ def check_duplicates_df(df):
     """
     print(f"Number of duplicated rows in the dataframe: {df.duplicated().sum()}")
 
-def standardize_data(df, columns, type='train', scaler=StandardScaler()):
-    """Standardizes the specified columns in a dataframe and returns the standardized dataframe."""
+def standardize_train(df, columns):
+    """Standardizes the specified columns in a training dataframe."""
     """
         Example:
-        standardized_df = standardize_data(iris_df, ['sepal_length', 'sepal_width'], type='train')
+        standardized_train_df = standardize_train(iris_df, ['sepal_length', 'sepal_width'])
         It will return the iris_df dataframe with standardized sepal_length and sepal_width columns
     """
-    
-    if type == "train":
-        scaler = StandardScaler()
-        df[columns] = scaler.fit_transform(df[columns])
-    elif type == "test":
-        if scaler is None:
-            raise ValueError("Scaler must be provided when type='test'")
-        df[columns] = scaler.transform(df[columns])
-    else:
-        raise ValueError("type must be 'train' or 'test'")
-
+    scaler = StandardScaler()
+    df[columns] = scaler.fit_transform(df[columns])
     return df, scaler
 
+def standardize_test(df, columns, scaler):
+    """Standardizes the specified columns in a testing dataframe."""
+    """
+        Example:
+        standardized_test_df = standardize_test(iris_df, ['sepal_length', 'sepal_width'], scaler)
+        It will return the iris_df dataframe with standardized sepal_length and sepal_width columns
+    """
+    if scaler is None:
+        raise ValueError("Scaler must be provided for test data")
+    df[columns] = scaler.transform(df[columns])
+    return df
 
 def pop_target(df, target):
     """Separates the target column from the features in a dataframe."""
