@@ -104,7 +104,7 @@ def check_duplicates_df(df):
     """
     print(f"Number of duplicated rows in the dataframe: {df.duplicated().sum()}")
 
-def standardize_data(df, columns, type='train'):
+def standardize_data(df, columns, type='train', scaler=StandardScaler()):
     """Standardizes the specified columns in a dataframe and returns the standardized dataframe."""
     """
         Example:
@@ -112,12 +112,17 @@ def standardize_data(df, columns, type='train'):
         It will return the iris_df dataframe with standardized sepal_length and sepal_width columns
     """
     
-    scaler = StandardScaler()
-    if type == 'train':
+    if type == "train":
+        scaler = StandardScaler()
         df[columns] = scaler.fit_transform(df[columns])
-    else:
+    elif type == "test":
+        if scaler is None:
+            raise ValueError("Scaler must be provided when type='test'")
         df[columns] = scaler.transform(df[columns])
-    return df
+    else:
+        raise ValueError("type must be 'train' or 'test'")
+
+    return df, scaler
 
 
 def pop_target(df, target):
