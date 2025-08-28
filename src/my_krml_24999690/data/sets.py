@@ -20,6 +20,19 @@ def get_shapes(**datasets):
         print(f"The shape of the {name} dataset: {df.shape[0]} rows and {df.shape[1]} columns")
         
 
+def drop_columns(df, columns):
+    """Drops one or multiple columns from a dataframe and returns the modified dataframe."""
+    """
+        Example:
+        modified_df = drop_columns(iris_df, ['species', 'petal_width'])
+        It will return the iris_df dataframe without the 'species' and 'petal_width' columns
+    """
+    try:
+        return df.drop(columns=columns)
+    except Exception as e:
+        print(f"Error occurred while dropping columns: {e}")
+        return df
+
 def check_duplicates(**datasets):
     """Prints the number of duplicated rows for multiple datasets passed as keyword arguments."""
     """
