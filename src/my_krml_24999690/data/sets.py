@@ -86,15 +86,6 @@ def check_null_columns(**datasets):
         else:
             print(null_columns)
             
-def drop_duplicates(df):
-    """Drops duplicated rows from a dataframe and returns the cleaned dataframe."""
-    """
-        Example:
-        cleaned_df = drop_duplicates(iris_df)
-        It will return the iris_df dataframe without duplicated rows
-    """
-    return df.drop_duplicates().reset_index(drop=True)
-
 def check_duplicates_df(df):
     """Returns the number of duplicated rows in a dataframe."""
     """
@@ -163,9 +154,6 @@ def evaluate_model(model, X_train, y_train, X_val, y_val):
     
     model.fit(X_train, y_train)
     
-    # Train the model
-    model.fit(X_train, y_train)
-
     # Predict probabilities
     y_train_pred_proba = model.predict_proba(X_train)[:, 1]
     y_val_pred_proba = model.predict_proba(X_val)[:, 1]
@@ -182,16 +170,18 @@ def evaluate_model(model, X_train, y_train, X_val, y_val):
     return y_train_pred_proba, y_val_pred_proba
     
 
-def print_auroc(y_true, y_pred_proba):
+def print_auroc(y_true, y_pred_proba, type='train'):
     """Prints the AUROC score given true labels and predicted probabilities."""
     """
         Example:
         print_auroc(y_test, y_test_pred_proba)
-        It will print the AUROC score for the test set
+        It will print the AUROC
     """
     score = roc_auc_score(y_true, y_pred_proba)
-    print(f"AUROC: {score:.4f}")
-    return score
+    if type == 'train':
+        print(f"AUROC Score on the training data: {score:.4f}")
+    else:
+        print(f"AUROC Score on the validation data: {score:.4f}")
 
 def kaggle_submission(model, X_test, sample_path, output_path, target_col=''):
     """Submit to Kaggle competition."""
