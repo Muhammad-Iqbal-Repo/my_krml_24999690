@@ -1,7 +1,68 @@
 import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score
+
+# build a function to load the data
+
+def load_data_at2(file_path: str, skiprows: int, sep: str) -> pd.DataFrame:
+    """
+    Load the dataset from a CSV file.
+
+    Parameters:
+    file_path (str): The path to the CSV file.
+
+    Returns:
+    pd.DataFrame: The loaded dataset.
+    """
+    try:
+        data = pd.read_csv(file_path, skiprows=skiprows, sep=sep)  # Skip the specified number of rows
+        print(f"Data loaded successfully from {file_path}")
+        print(f"Data shape: {data.shape}")
+        print(f"Data columns: {data.columns.tolist()}")
+        return data
+    except FileNotFoundError:
+        print(f"File not found: {file_path}. Please ensure the data file is in the correct directory.")
+        return pd.DataFrame()  # Return an empty DataFrame if file not found
+
+# build a function build a bar chart to visualize the class distribution
+
+def plot_class_distribution(target_column, figsize, title, xlabel, ylabel):
+    
+    # count the unique values in the target column to serve as the basis for the coloring
+    # use random colors based on the number of unique values
+    """
+        Example:
+        plot_class_distribution(df['species'], (10, 5), 'Iris Species Distribution', 'Species', 'Count')
+        It will plot a bar chart showing the distribution of the species in the iris dataset
+    """
+    
+    value_counts = target_column.value_counts()
+    plt.figure(figsize=figsize)
+    value_counts.plot(kind='bar', color=plt.cm.Paired.colors[:len(value_counts)])
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.xticks(rotation=0)
+    plt.show()
+    
+    print(f"Class distribution:\n{value_counts}")
+    
+def plot_categorical_distribution_with_target(df, col, target_col, figsize):
+    """Plots the distribution of a categorical column relative to a target variable."""
+    """
+        Example:
+        plot_categorical_distribution_with_target(iris_df, 'species', 'is_setosa', (10, 5))
+        It will plot a bar chart showing the distribution of the species in the iris dataset relative to the target variable is_setosa
+    """
+    plt.figure(figsize=figsize)
+    sns.countplot(data=df, x=col, hue=target_col, palette='Set2')
+    plt.title(f"Distribution of '{col}' by '{target_col}'")
+    plt.xlabel(target_col)
+    plt.ylabel(col)
+    plt.show()
 
 def get_shapes(**datasets):
     """Prints the shape of multiple datasets passed as keyword arguments."""
