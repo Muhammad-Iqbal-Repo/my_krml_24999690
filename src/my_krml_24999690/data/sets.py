@@ -27,58 +27,6 @@ def load_data_at2(file_path: str, skiprows: int, sep: str) -> pd.DataFrame:
         print(f"File not found: {file_path}. Please ensure the data file is in the correct directory.")
         return pd.DataFrame()  # Return an empty DataFrame if file not found
 
-# build a function build a bar chart to visualize the class distribution
-
-def plot_class_distribution(target_column, figsize, title, xlabel, ylabel):
-    
-    # count the unique values in the target column to serve as the basis for the coloring
-    # use random colors based on the number of unique values
-    """
-        Example:
-        plot_class_distribution(df['species'], (10, 5), 'Iris Species Distribution', 'Species', 'Count')
-        It will plot a bar chart showing the distribution of the species in the iris dataset
-    """
-    
-    value_counts = target_column.value_counts()
-    plt.figure(figsize=figsize)
-    value_counts.plot(kind='bar', color=plt.cm.Paired.colors[:len(value_counts)])
-    plt.title(title)
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
-    plt.xticks(rotation=0)
-    plt.show()
-    
-    print(f"Class distribution:\n{value_counts}")
-    
-    
-def boxplot_regression(df, col, target_col, figsize):
-    """Plots a boxplot of a categorical column relative to a regression target variable."""
-    """
-        Example:
-        boxplot_regression(iris_df, 'species', 'sepal_length', (10, 5))
-        It will plot a boxplot showing the distribution of sepal_length for each species in the iris dataset
-    """
-    plt.figure(figsize=figsize)
-    sns.boxplot(data=df, x=col, y=target_col, palette='Set2', hue=col)
-    plt.title(f"Boxplot of '{target_col}' by '{col}'")
-    plt.xlabel(col)
-    plt.ylabel(target_col)
-    plt.show()
-    
-def plot_categorical_distribution_with_target(df, col, target_col, figsize):
-    """Plots the distribution of a categorical column relative to a target variable."""
-    """
-        Example:
-        plot_categorical_distribution_with_target(iris_df, 'species', 'is_setosa', (10, 5))
-        It will plot a bar chart showing the distribution of the species in the iris dataset relative to the target variable is_setosa
-    """
-    plt.figure(figsize=figsize)
-    sns.countplot(data=df, x=col, hue=target_col, palette='Set2')
-    plt.title(f"Distribution of '{col}' by '{target_col}'")
-    plt.xlabel(target_col)
-    plt.ylabel(col)
-    plt.show()
-
 def get_shapes(**datasets):
     """Prints the shape of multiple datasets passed as keyword arguments."""
     """
@@ -181,6 +129,79 @@ def standardize_train(df, columns):
     scaler = StandardScaler()
     df[columns] = scaler.fit_transform(df[columns])
     return df, scaler
+
+def plot_class_distribution(target_column, figsize, title, xlabel, ylabel):
+    
+    # count the unique values in the target column to serve as the basis for the coloring
+    # use random colors based on the number of unique values
+    """
+        Example:
+        plot_class_distribution(df['species'], (10, 5), 'Iris Species Distribution', 'Species', 'Count')
+        It will plot a bar chart showing the distribution of the species in the iris dataset
+    """
+    
+    value_counts = target_column.value_counts()
+    plt.figure(figsize=figsize)
+    value_counts.plot(kind='bar', color=plt.cm.Paired.colors[:len(value_counts)])
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.xticks(rotation=0)
+    plt.show()
+    
+    print(f"Class distribution:\n{value_counts}")
+    
+    
+def boxplot_regression(df, col, target_col, figsize):
+    """Plots a boxplot of a categorical column relative to a regression target variable."""
+    """
+        Example:
+        boxplot_regression(iris_df, 'species', 'sepal_length', (10, 5))
+        It will plot a boxplot showing the distribution of sepal_length for each species in the iris dataset
+    """
+    plt.figure(figsize=figsize)
+    sns.boxplot(data=df, x=col, y=target_col, palette='Set2', hue=col)
+    plt.title(f"Boxplot of '{target_col}' by '{col}'")
+    plt.xlabel(col)
+    plt.ylabel(target_col)
+    plt.show()
+    
+def plot_categorical_distribution_with_target(df, col, target_col, figsize):
+    """Plots the distribution of a categorical column relative to a target variable."""
+    """
+        Example:
+        plot_categorical_distribution_with_target(iris_df, 'species', 'is_setosa', (10, 5))
+        It will plot a bar chart showing the distribution of the species in the iris dataset relative to the target variable is_setosa
+    """
+    plt.figure(figsize=figsize)
+    sns.countplot(data=df, x=col, hue=target_col, palette='Set2')
+    plt.title(f"Distribution of '{col}' by '{target_col}'")
+    plt.xlabel(target_col)
+    plt.ylabel(col)
+    plt.show()
+
+def plot_numerical_with_target(df, col, target_col, figsize, type):
+    """Plot a histogram of a numerical column colored by a target variable.
+    Args:
+        df (_type_): dataframe source
+        col (_type_): numerical column to plot
+        target_col (_type_): target column for coloring
+        figsize (_type_): figure size
+    """
+    if type == "classification":
+        plt.figure(figsize=figsize)
+        sns.histplot(data=df, x=col, hue=target_col, bins=20, kde=True, palette='Set2')
+        plt.title(f"Distribution of '{col}' by '{target_col}'")
+        plt.xlabel(col)
+        plt.ylabel('Frequency')
+        plt.show()
+    else:
+        plt.figure(figsize=figsize)
+        sns.scatterplot(data=df, x=col, y=target_col, hue=target_col, palette='Set2')
+        plt.title(f"Scatter plot of '{col}' vs '{target_col}'")
+        plt.xlabel(col)
+        plt.ylabel(target_col)
+        plt.show()
 
 def standardize_test(df, columns, scaler):
     """Standardizes the specified columns in a testing dataframe."""
