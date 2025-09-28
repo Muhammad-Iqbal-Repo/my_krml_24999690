@@ -59,7 +59,7 @@ def boxplot_regression(df, col, target_col, figsize):
         It will plot a boxplot showing the distribution of sepal_length for each species in the iris dataset
     """
     plt.figure(figsize=figsize)
-    sns.boxplot(data=df, x=col, y=target_col, palette='Set2')
+    sns.boxplot(data=df, x=col, y=target_col, palette='Set2', hue=col)
     plt.title(f"Boxplot of '{target_col}' by '{col}'")
     plt.xlabel(col)
     plt.ylabel(target_col)
