@@ -197,7 +197,7 @@ def plot_numerical_with_target(df, col, target_col, figsize, type):
         plt.show()
     else:
         plt.figure(figsize=figsize)
-        sns.scatterplot(data=df, x=col, y=target_col, hue=target_col, palette='Set2')
+        sns.scatterplot(data=df, x=col, y=target_col)
         plt.title(f"Scatter plot of '{col}' vs '{target_col}'")
         plt.xlabel(col)
         plt.ylabel(target_col)
