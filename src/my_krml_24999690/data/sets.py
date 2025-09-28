@@ -50,6 +50,21 @@ def plot_class_distribution(target_column, figsize, title, xlabel, ylabel):
     
     print(f"Class distribution:\n{value_counts}")
     
+    
+def boxplot_regression(df, col, target_col, figsize):
+    """Plots a boxplot of a categorical column relative to a regression target variable."""
+    """
+        Example:
+        boxplot_regression(iris_df, 'species', 'sepal_length', (10, 5))
+        It will plot a boxplot showing the distribution of sepal_length for each species in the iris dataset
+    """
+    plt.figure(figsize=figsize)
+    sns.boxplot(data=df, x=col, y=target_col, palette='Set2')
+    plt.title(f"Boxplot of '{target_col}' by '{col}'")
+    plt.xlabel(col)
+    plt.ylabel(target_col)
+    plt.show()
+    
 def plot_categorical_distribution_with_target(df, col, target_col, figsize):
     """Plots the distribution of a categorical column relative to a target variable."""
     """
