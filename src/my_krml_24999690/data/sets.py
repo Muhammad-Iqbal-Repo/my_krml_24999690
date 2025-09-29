@@ -4,6 +4,7 @@ import seaborn as sns
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, ConfusionMatrixDisplay, mean_absolute_error, root_mean_squared_error, roc_auc_score
 
 # build a function to load the data
 
@@ -352,3 +353,155 @@ def at2_create_time_series_splits(df_classification, df_regression, validation_t
     
     return class_train, class_val, class_test, reg_train, reg_val, reg_test
 
+def at2_train_evaluate_classification_model(model, X_train, y_train, X_val, y_val, X_test, y_test, experiment_name:str, dict_results):
+    """
+    Trains and evaluates a classification model.
+
+    Args:
+        model: The classification model to train and evaluate.
+        X_train: The training features.
+        y_train: The training labels.
+        X_val: The validation features.
+        y_val: The validation labels.
+        X_test: The test features.
+        y_test: The test labels.
+        experiment_name: The name of the experiment (for logging purposes).
+        dict_results: A dictionary to store the results of the experiment.
+    """
+    # get model name
+    model_name = model.__class__.__name__
+    
+    # fit the model
+    
+    model.fit(X_train, y_train)
+    
+    # predict the results
+    
+    y_train_pred = model.predict(X_train)
+    y_val_pred = model.predict(X_val)
+    y_test_pred = model.predict(X_test)
+    
+    # calculate the performance metrics
+    
+    dict_results[experiment_name] = {
+        "model_name": model_name,
+        "train_accuracy": accuracy_score(y_train, y_train_pred),
+        "val_accuracy": accuracy_score(y_val, y_val_pred),
+        "test_accuracy": accuracy_score(y_test, y_test_pred),
+        "train_precision": precision_score(y_train, y_train_pred),
+        "val_precision": precision_score(y_val, y_val_pred),
+        "test_precision": precision_score(y_test, y_test_pred),
+        "train_recall": recall_score(y_train, y_train_pred),
+        "val_recall": recall_score(y_val, y_val_pred),
+        "test_recall": recall_score(y_test, y_test_pred),
+        "train_f1": f1_score(y_train, y_train_pred),
+        "val_f1": f1_score(y_val, y_val_pred),
+        "test_f1": f1_score(y_test, y_test_pred),
+        "train_roc_auc": roc_auc_score(y_train, y_train_pred),
+        "val_roc_auc": roc_auc_score(y_val, y_val_pred),
+        "test_roc_auc": roc_auc_score(y_test, y_test_pred)
+    }
+    
+    # print the results
+    
+    print(f"Experiment: {experiment_name}")
+    print(f"Model: {model_name}")
+    print(f"Train Accuracy: {dict_results[experiment_name]['train_accuracy']:.4f}")
+    print(f"Validation Accuracy: {dict_results[experiment_name]['val_accuracy']:.4f}")
+    print(f"Test Accuracy: {dict_results[experiment_name]['test_accuracy']:.4f}")
+    print(f"Train Precision: {dict_results[experiment_name]['train_precision']:.4f}")
+    print(f"Validation Precision: {dict_results[experiment_name]['val_precision']:.4f}")
+    print(f"Test Precision: {dict_results[experiment_name]['test_precision']:.4f}")
+    print(f"Train Recall: {dict_results[experiment_name]['train_recall']:.4f}")
+    print(f"Validation Recall: {dict_results[experiment_name]['val_recall']:.4f}")
+    print(f"Test Recall: {dict_results[experiment_name]['test_recall']:.4f}")
+    print(f"Train F1-Score: {dict_results[experiment_name]['train_f1']:.4f}")
+    print(f"Validation F1-Score: {dict_results[experiment_name]['val_f1']:.4f}")
+    print(f"Test F1-Score: {dict_results[experiment_name]['test_f1']:.4f}")
+    print(f"Train ROC-AUC: {dict_results[experiment_name]['train_roc_auc']:.4f}")
+    print(f"Validation ROC-AUC: {dict_results[experiment_name]['val_roc_auc']:.4f}")
+    print(f"Test ROC-AUC: {dict_results[experiment_name]['test_roc_auc']:.4f}")
+    
+    # print confusion matrix display
+    
+    cm_train = confusion_matrix(y_train, y_train_pred)
+    cm_val = confusion_matrix(y_val, y_val_pred)
+    cm_test = confusion_matrix(y_test, y_test_pred)
+    
+    disp_train = ConfusionMatrixDisplay(confusion_matrix=cm_train)
+    disp_val = ConfusionMatrixDisplay(confusion_matrix=cm_val)
+    disp_test = ConfusionMatrixDisplay(confusion_matrix=cm_test)
+    
+    disp_train.plot()
+    plt.title(f"Confusion Matrix - Train Set ({experiment_name})")
+    plt.show()
+    
+    disp_val.plot()
+    plt.title(f"Confusion Matrix - Validation Set ({experiment_name})")
+    plt.show()
+    
+    disp_test.plot()
+    plt.title(f"Confusion Matrix - Test Set ({experiment_name})")
+    plt.show()
+    
+    # print a separator
+    
+    print("-" * 50)
+    print(f"The results of the experiment '{experiment_name}' have been recorded.")
+    print("-" * 50)
+    
+def at2_train_evaluate_regression_model(model, X_train, y_train, X_val, y_val, X_test, y_test, experiment_name:str, dict_results):
+    """
+    Trains and evaluates a regression model.
+    Args:
+        model: The regression model to train and evaluate.
+        X_train: The training features.
+        y_train: The training labels.
+        X_val: The validation features.
+        y_val: The validation labels.
+        X_test: The test features.
+        y_test: The test labels.
+        experiment_name: The name of the experiment (for logging purposes).
+        dict_results: A dictionary to store the results of the experiment.
+    """
+    
+    # get model name
+    model_name = model.__class__.__name__
+    
+    # fit the model
+    
+    model.fit(X_train, y_train)
+    
+    # predict the results
+    y_train_pred = model.predict(X_train)
+    y_val_pred = model.predict(X_val)
+    y_test_pred = model.predict(X_test)
+    
+    # calculate the performance metrics
+    
+    dict_results[experiment_name] = {
+        "model_name": model_name,
+        "train_mae" : mean_absolute_error(y_train, y_train_pred),
+        "val_mae" : mean_absolute_error(y_val, y_val_pred),
+        "test_mae" : mean_absolute_error(y_test, y_test_pred),
+        "train_rmse" : root_mean_squared_error(y_train, y_train_pred),
+        "val_rmse" : root_mean_squared_error(y_val, y_val_pred),
+        "test_rmse" : root_mean_squared_error(y_test, y_test_pred)
+    }
+    
+    # print the results
+    
+    print(f"Experiment: {experiment_name}")
+    print(f"Model: {model_name}")
+    print(f"Train MAE: {dict_results[experiment_name]['train_mae']:.4f}")
+    print(f"Validation MAE: {dict_results[experiment_name]['val_mae']:.4f}")
+    print(f"Test MAE: {dict_results[experiment_name]['test_mae']:.4f}")
+    print(f"Train RMSE: {dict_results[experiment_name]['train_rmse']:.4f}")
+    print(f"Validation RMSE: {dict_results[experiment_name]['val_rmse']:.4f}")
+    print(f"Test RMSE: {dict_results[experiment_name]['test_rmse']:.4f}")
+    
+    # print a separator
+    
+    print("-" * 50)
+    print(f"The results of the experiment '{experiment_name}' have been recorded.")
+    print("-" * 50)
