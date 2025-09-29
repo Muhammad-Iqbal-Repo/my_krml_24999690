@@ -29,14 +29,13 @@ def load_data_at2(file_path: str, skiprows: int, sep: str) -> pd.DataFrame:
         print(f"File not found: {file_path}. Please ensure the data file is in the correct directory.")
         return pd.DataFrame()  # Return an empty DataFrame if file not found
     
-def get_experiment_files(experiment_number:str, base_path:Path=DATA_DIR):
+def get_experiment_files(experiment_number:str, base_path):
     """
     Get the file path for the specified experiment number, data type, and dataset type.
 
     Parameters:
-    - experiment_number (int): The experiment number (e.g., 1 for exp1).
-    - data_type (str): The type of data ('X_class', 'y_class', 'X_reg', 'y_reg').
-    - dataset_type (str): The dataset type ('train', 'val', 'test').
+    - experiment_number (int): The experiment number (e.g., exp1)
+    - base_path (Path): The base path where the experiment folders are located.
     """
     
     # assign the base path
