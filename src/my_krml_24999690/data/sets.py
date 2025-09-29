@@ -290,3 +290,65 @@ def kaggle_submission(model, X_test, sample_path, output_path, target_col=''):
     
     return submission_df
 
+def at2_create_time_series_splits(df_classification, df_regression, validation_threshold='2024-07-01'):
+    """
+    Splits classification and regression dataframes into train, validation, and test sets.
+
+    This function is designed for time-series data and splits it as follows:
+    1.  **Test Set**: Data from the year 2025 onwards.
+    2.  **Validation Set**: Data from the last 6 months of 2024 (July 1st onwards).
+    3.  **Training Set**: All data before July 1st, 2024.
+
+    Args:
+        df_classification (pd.DataFrame): The complete dataframe for the classification task.
+                                          It must contain a 'time' column.
+        df_regression (pd.DataFrame): The complete dataframe for the regression task.
+                                      It must contain a 'time' column.
+
+    Returns:
+        tuple: A tuple containing six dataframes in the order:
+               (class_train, class_val, class_test,
+                reg_train, reg_val, reg_test)
+    """
+    # ensure the 'time' column is in datetime format
+    df_classification['time'] = pd.to_datetime(df_classification['time'])
+    
+    # split the classification dataframe
+    # Isolate data before 2025 for training and validatio
+    pre_2025_class_data = df_classification[df_classification['time'].dt.year < 2025].copy()
+    
+    # the test set is all data from 2025 onwards
+    class_test = df_classification[df_classification['time'].dt.year >= 2025].copy()
+    
+    # split the pre-2025 data into training and validation sets
+    class_val = pre_2025_class_data[pre_2025_class_data['time'] >= '2024-07-01'].copy()
+    class_train = pre_2025_class_data[pre_2025_class_data['time'] < '2024-07-01'].copy()
+
+    # regression dataframe
+    # ensure the 'time' column is in datetime format
+    df_regression['time'] = pd.to_datetime(df_regression['time'])
+
+    # split the data prior to 2025 for training and validation
+    pre_2025_reg_data = df_regression[df_regression['time'].dt.year < 2025].copy()
+
+    # the test set is all data from 2025 onwards
+    reg_test = df_regression[df_regression['time'].dt.year >= 2025].copy()
+
+    # split the pre-2025 data into training and validation sets
+    reg_val = pre_2025_reg_data[pre_2025_reg_data['time'] >= '2024-07-01'].copy()
+    reg_train = pre_2025_reg_data[pre_2025_reg_data['time'] < '2024-07-01'].copy()
+
+    # print summary of the splits
+    print("Data Split Summary:")
+    print("Classification Task:")
+    print(f"Training set shape:{class_train.shape}")
+    print(f"Validation set shape:{class_val.shape}")
+    print(f"Test set shape:{class_test.shape}")
+
+    print("\nRegression Task:")
+    print(f"Training set shape:{reg_train.shape}")
+    print(f"Validation set shape:{reg_val.shape}")
+    print(f"Test set shape:{reg_test.shape}")
+    
+    return class_train, class_val, class_test, reg_train, reg_val, reg_test
+
