@@ -28,6 +28,52 @@ def load_data_at2(file_path: str, skiprows: int, sep: str) -> pd.DataFrame:
     except FileNotFoundError:
         print(f"File not found: {file_path}. Please ensure the data file is in the correct directory.")
         return pd.DataFrame()  # Return an empty DataFrame if file not found
+    
+def get_experiment_files(experiment_number:str, base_path:Path=DATA_DIR):
+    """
+    Get the file path for the specified experiment number, data type, and dataset type.
+
+    Parameters:
+    - experiment_number (int): The experiment number (e.g., 1 for exp1).
+    - data_type (str): The type of data ('X_class', 'y_class', 'X_reg', 'y_reg').
+    - dataset_type (str): The dataset type ('train', 'val', 'test').
+    """
+    
+    # assign the base path
+    csv_path = base_path / experiment_number
+    
+    # list all the csv files in the folder
+    csv_files = list(csv_path.glob("*.csv"))
+   
+    # read all the csv files and store it in a dictionary
+    data_dict = {}
+    
+    for csv_file in csv_files:
+        var_name = csv_file.stem.replace(f"{experiment_number}_", "")
+        data_dict[var_name] = pd.read_csv(csv_file)
+        
+    # assign each variable to its respective name
+    
+    X_class_train = data_dict["X_class_train"]
+    y_class_train = data_dict["y_class_train"]
+    X_class_val = data_dict["X_class_val"]
+    y_class_val = data_dict["y_class_val"]
+    X_class_test = data_dict["X_class_test"]
+    y_class_test = data_dict["y_class_test"]
+    X_reg_train = data_dict["X_reg_train"]
+    y_reg_train = data_dict["y_reg_train"]
+    X_reg_val = data_dict["X_reg_val"]
+    y_reg_val = data_dict["y_reg_val"]
+    X_reg_test = data_dict["X_reg_test"]
+    y_reg_test = data_dict["y_reg_test"]
+    
+    # print the shape of each variable
+    for var_name, df in data_dict.items():
+        print(f"{var_name}: {df.shape}")
+        
+    # return all the variables
+    return (X_class_train, y_class_train, X_class_val, y_class_val, X_class_test, y_class_test,
+            X_reg_train, y_reg_train, X_reg_val, y_reg_val, X_reg_test, y_reg_test)
 
 def get_shapes(**datasets):
     """Prints the shape of multiple datasets passed as keyword arguments."""
@@ -323,8 +369,8 @@ def at2_create_time_series_splits(df_classification, df_regression, validation_t
     class_test = df_classification[df_classification['time'].dt.year >= 2025].copy()
     
     # split the pre-2025 data into training and validation sets
-    class_val = pre_2025_class_data[pre_2025_class_data['time'] >= '2024-07-01'].copy()
-    class_train = pre_2025_class_data[pre_2025_class_data['time'] < '2024-07-01'].copy()
+    class_val = pre_2025_class_data[pre_2025_class_data['time'] >= validation_threshold].copy()
+    class_train = pre_2025_class_data[pre_2025_class_data['time'] < validation_threshold].copy()
 
     # regression dataframe
     # ensure the 'time' column is in datetime format
@@ -337,8 +383,8 @@ def at2_create_time_series_splits(df_classification, df_regression, validation_t
     reg_test = df_regression[df_regression['time'].dt.year >= 2025].copy()
 
     # split the pre-2025 data into training and validation sets
-    reg_val = pre_2025_reg_data[pre_2025_reg_data['time'] >= '2024-07-01'].copy()
-    reg_train = pre_2025_reg_data[pre_2025_reg_data['time'] < '2024-07-01'].copy()
+    reg_val = pre_2025_reg_data[pre_2025_reg_data['time'] >= validation_threshold].copy()
+    reg_train = pre_2025_reg_data[pre_2025_reg_data['time'] < validation_threshold].copy()
 
     # print summary of the splits
     print("Data Split Summary:")
