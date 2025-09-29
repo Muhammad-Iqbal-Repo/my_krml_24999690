@@ -451,6 +451,54 @@ def at2_train_evaluate_classification_model(model, X_train, y_train, X_val, y_va
     print(f"The results of the experiment '{experiment_name}' have been recorded.")
     print("-" * 50)
     
+def at2_X_y_split(class_train, class_val, class_test, reg_train, reg_val, reg_test, final_selected_features_clf, final_selected_features_reg, target_classification, target_regression):
+    
+    """
+    Splits the classification and regression datasets into features (X) and target (y) for training, validation, and testing.
+    Args:
+        class_train (pd.DataFrame): Training set for classification.
+        class_val (pd.DataFrame): Validation set for classification.
+        class_test (pd.DataFrame): Test set for classification.
+        reg_train (pd.DataFrame): Training set for regression.
+        reg_val (pd.DataFrame): Validation set for regression.
+        reg_test (pd.DataFrame): Test set for regression.
+        final_selected_features_clf (list): List of selected feature names for classification.
+        final_selected_features_reg (list): List of selected feature names for regression.
+        target_classification (str): Name of the target column for classification.
+        target_regression (str): Name of the target column for regression.
+    Returns:
+        tuple: A tuple containing six elements in the order:
+                (X_class_train, y_class_train, X_class_val, y_class_val, X_class_test, y_class_test,
+                 X_reg_train, y_reg_train, X_reg_val, y_reg_val, X_reg_test, y_reg_test)
+    """
+    
+    X_class_train = class_train[final_selected_features_clf].drop(columns=['time'])
+    y_class_train = class_train[target_classification]
+    X_class_val = class_val[final_selected_features_clf].drop(columns=['time'])
+    y_class_val = class_val[target_classification]
+    X_class_test = class_test[final_selected_features_clf].drop(columns=['time'])
+    y_class_test = class_test[target_classification]
+
+    X_reg_train = reg_train[final_selected_features_reg].drop(columns=['time'])
+    y_reg_train = reg_train[target_regression]
+    X_reg_val = reg_val[final_selected_features_reg].drop(columns=['time'])
+    y_reg_val = reg_val[target_regression]
+    X_reg_test = reg_test[final_selected_features_reg].drop(columns=['time'])
+    y_reg_test = reg_test[target_regression]
+
+    # print the shapes of the datasets
+
+    print("Classification Task:")
+    print(f"X_class_train: {X_class_train.shape}, y_class_train: {y_class_train.shape}")
+    print(f"X_class_val: {X_class_val.shape}, y_class_val: {y_class_val.shape}")
+    print(f"X_class_test: {X_class_test.shape}, y_class_test: {y_class_test.shape}")
+
+    print("\nRegression Task:")
+    print(f"X_reg_train: {X_reg_train.shape}, y_reg_train: {y_reg_train.shape}")
+    print(f"X_reg_val: {X_reg_val.shape}, y_reg_val: {y_reg_val.shape}")
+    print(f"X_reg_test: {X_reg_test.shape}, y_reg_test: {y_reg_test.shape}")
+
+    
 def at2_train_evaluate_regression_model(model, X_train, y_train, X_val, y_val, X_test, y_test, experiment_name:str, dict_results):
     """
     Trains and evaluates a regression model.
