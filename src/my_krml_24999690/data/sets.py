@@ -20,6 +20,7 @@ def load_data_at2(file_path: str, skiprows: int, sep: str) -> pd.DataFrame:
     """
     try:
         data = pd.read_csv(file_path, skiprows=skiprows, sep=sep)  # Skip the specified number of rows
+        data['time'] = pd.to_datetime(data['time'])  # Ensure 'time' column is in datetime format
         print(f"Data loaded successfully from {file_path}")
         print(f"Data shape: {data.shape}")
         print(f"Data columns: {data.columns.tolist()}")
