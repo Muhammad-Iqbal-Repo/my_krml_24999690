@@ -498,6 +498,8 @@ def at2_X_y_split(class_train, class_val, class_test, reg_train, reg_val, reg_te
     print(f"X_reg_val: {X_reg_val.shape}, y_reg_val: {y_reg_val.shape}")
     print(f"X_reg_test: {X_reg_test.shape}, y_reg_test: {y_reg_test.shape}")
 
+    return (X_class_train, y_class_train, X_class_val, y_class_val, X_class_test, y_class_test,
+            X_reg_train, y_reg_train, X_reg_val, y_reg_val, X_reg_test, y_reg_test)
     
 def at2_train_evaluate_regression_model(model, X_train, y_train, X_val, y_val, X_test, y_test, experiment_name:str, dict_results):
     """

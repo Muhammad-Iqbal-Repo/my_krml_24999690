@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "my_krml_24999690"
-version = "2025.0.3.5"
+version = "2025.0.3.7"
 description = "Package for Assignment 1"
 authors = ["Muhammad Iqbal"]
 license = "None"
