@@ -269,7 +269,7 @@ def add_cyclical_time_features(df, date_col):
     df["month_cos"] = np.cos(2 * np.pi * df["month"] / 12)
     
     # drop the intermediate columns
-    df = df.drop(columns=["time","doy", "dow", "hour", "month"])
+    df = df.drop(columns=["doy", "dow", "hour", "month"])
 
     return df
 
@@ -383,68 +383,70 @@ def kaggle_submission(model, X_test, sample_path, output_path, target_col=''):
     
     return submission_df
 
-def at2_create_time_series_splits(df_classification, df_regression, validation_threshold='2024-07-01'):
+def at2_create_time_series_splits(df, validation_threshold, type):
+    # create docstring
     """
-    Splits classification and regression dataframes into train, validation, and test sets.
-
-    This function is designed for time-series data and splits it as follows:
-    1.  **Test Set**: Data from the year 2025 onwards.
-    2.  **Validation Set**: Data from the last 6 months of 2024 (July 1st onwards).
-    3.  **Training Set**: All data before July 1st, 2024.
-
+    Splits a time series dataframe into training, validation, and test sets based on a specified validation threshold date.
     Args:
-        df_classification (pd.DataFrame): The complete dataframe for the classification task.
-                                          It must contain a 'time' column.
-        df_regression (pd.DataFrame): The complete dataframe for the regression task.
-                                      It must contain a 'time' column.
-
+        df (pd.DataFrame): The input dataframe containing a 'time' column.
+        validation_threshold (str): The date string (YYYY-MM-DD) to split the training and validation sets.
+        type (str): The type of task, either "classification" or "regression".
     Returns:
-        tuple: A tuple containing six dataframes in the order:
-               (class_train, class_val, class_test,
-                reg_train, reg_val, reg_test)
-    """
-    # ensure the 'time' column is in datetime format
-    df_classification['time'] = pd.to_datetime(df_classification['time'])
+        tuple: A tuple containing the training, validation, and test sets as dataframes.
+    """ 
     
-    # split the classification dataframe
-    # Isolate data before 2025 for training and validatio
-    pre_2025_class_data = df_classification[df_classification['time'].dt.year < 2025].copy()
+    if type == "classification":
+        # classification dataframe
+        # ensure the 'time' column is in datetime format
+        df['time'] = pd.to_datetime(df['time'])
+        
+        # split the classification dataframe
+        # Isolate data before 2025 for training and validation
+        pre_2025_class_data = df[df['time'].dt.year < 2025].copy()
+        
+        # the test set is all data from 2025 onwards
+        class_test = df[df['time'].dt.year >= 2025].copy()
+        
+        # split the pre-2025 data into training and validation sets
+        class_val = pre_2025_class_data[pre_2025_class_data['time'] >= validation_threshold].copy()
+        class_train = pre_2025_class_data[pre_2025_class_data['time'] < validation_threshold].copy()
+
+        # print the summary of the splits
+        
+        print("Data Split Summary:")
+        print("Classification Task:")
+        print(f"Training set shape:{class_train.shape}")
+        print(f"Validation set shape:{class_val.shape}")
+        print(f"Test set shape:{class_test.shape}")
+        
+        
+        return class_train, class_val, class_test
     
-    # the test set is all data from 2025 onwards
-    class_test = df_classification[df_classification['time'].dt.year >= 2025].copy()
     
-    # split the pre-2025 data into training and validation sets
-    class_val = pre_2025_class_data[pre_2025_class_data['time'] >= validation_threshold].copy()
-    class_train = pre_2025_class_data[pre_2025_class_data['time'] < validation_threshold].copy()
+    if type == "regression":
+        # regression dataframe
+        # ensure the 'time' column is in datetime format
+        df['time'] = pd.to_datetime(df['time'])
 
-    # regression dataframe
-    # ensure the 'time' column is in datetime format
-    df_regression['time'] = pd.to_datetime(df_regression['time'])
+        # split the data prior to 2025 for training and validation
+        pre_2025_reg_data = df[df['time'].dt.year < 2025].copy()
 
-    # split the data prior to 2025 for training and validation
-    pre_2025_reg_data = df_regression[df_regression['time'].dt.year < 2025].copy()
+        # the test set is all data from 2025 onwards
+        reg_test = df[df_regredfssion['time'].dt.year >= 2025].copy()
 
-    # the test set is all data from 2025 onwards
-    reg_test = df_regression[df_regression['time'].dt.year >= 2025].copy()
-
-    # split the pre-2025 data into training and validation sets
-    reg_val = pre_2025_reg_data[pre_2025_reg_data['time'] >= validation_threshold].copy()
-    reg_train = pre_2025_reg_data[pre_2025_reg_data['time'] < validation_threshold].copy()
-
-    # print summary of the splits
-    print("Data Split Summary:")
-    print("Classification Task:")
-    print(f"Training set shape:{class_train.shape}")
-    print(f"Validation set shape:{class_val.shape}")
-    print(f"Test set shape:{class_test.shape}")
-
-    print("\nRegression Task:")
-    print(f"Training set shape:{reg_train.shape}")
-    print(f"Validation set shape:{reg_val.shape}")
-    print(f"Test set shape:{reg_test.shape}")
+        # split the pre-2025 data into training and validation sets
+        reg_val = pre_2025_reg_data[pre_2025_reg_data['time'] >= validation_threshold].copy()
+        reg_train = pre_2025_reg_data[pre_2025_reg_data['time'] < validation_threshold].copy()
+        
+        # print the summary of the splits
+        print("Data Split Summary:")
+        print("Regression Task:")
+        print(f"Training set shape:{reg_train.shape}")
+        print(f"Validation set shape:{reg_val.shape}")
+        print(f"Test set shape:{reg_test.shape}")        
+        
+        return reg_train, reg_val, reg_test
     
-    return class_train, class_val, class_test, reg_train, reg_val, reg_test
-
 def at2_train_evaluate_classification_model(model, X_train, y_train, X_val, y_val, X_test, y_test, experiment_name:str, dict_results):
     """
     Trains and evaluates a classification model.
@@ -542,56 +544,56 @@ def at2_train_evaluate_classification_model(model, X_train, y_train, X_val, y_va
     print(f"The results of the experiment '{experiment_name}' have been recorded.")
     print("-" * 50)
     
-def at2_X_y_split(class_train, class_val, class_test, reg_train, reg_val, reg_test, final_selected_features_clf, final_selected_features_reg, target_classification, target_regression):
+def at2_X_y_split(train, val, test, final_features, target, type):
+    
+    # create docstring
     
     """
-    Splits the classification and regression datasets into features (X) and target (y) for training, validation, and testing.
+    Splits the data into features and target for classification and regression tasks.
     Args:
-        class_train (pd.DataFrame): Training set for classification.
-        class_val (pd.DataFrame): Validation set for classification.
-        class_test (pd.DataFrame): Test set for classification.
-        reg_train (pd.DataFrame): Training set for regression.
-        reg_val (pd.DataFrame): Validation set for regression.
-        reg_test (pd.DataFrame): Test set for regression.
-        final_selected_features_clf (list): List of selected feature names for classification.
-        final_selected_features_reg (list): List of selected feature names for regression.
-        target_classification (str): Name of the target column for classification.
-        target_regression (str): Name of the target column for regression.
+        train (pd.DataFrame): The training dataframe.
+        val (pd.DataFrame): The validation dataframe.
+        test (pd.DataFrame): The test dataframe.
+        final_features (list): List of feature column names to include.
+        target (str): The target column name.
+        type (str): The type of task - "classification" or "regression".
     Returns:
-        tuple: A tuple containing six elements in the order:
-                (X_class_train, y_class_train, X_class_val, y_class_val, X_class_test, y_class_test,
-                 X_reg_train, y_reg_train, X_reg_val, y_reg_val, X_reg_test, y_reg_test)
+        tuple: A tuple containing the features and target for training, validation, and test sets.
     """
     
-    X_class_train = class_train[final_selected_features_clf].drop(columns=['time'])
-    y_class_train = class_train[target_classification]
-    X_class_val = class_val[final_selected_features_clf].drop(columns=['time'])
-    y_class_val = class_val[target_classification]
-    X_class_test = class_test[final_selected_features_clf].drop(columns=['time'])
-    y_class_test = class_test[target_classification]
-
-    X_reg_train = reg_train[final_selected_features_reg].drop(columns=['time'])
-    y_reg_train = reg_train[target_regression]
-    X_reg_val = reg_val[final_selected_features_reg].drop(columns=['time'])
-    y_reg_val = reg_val[target_regression]
-    X_reg_test = reg_test[final_selected_features_reg].drop(columns=['time'])
-    y_reg_test = reg_test[target_regression]
-
-    # print the shapes of the datasets
-
-    print("Classification Task:")
-    print(f"X_class_train: {X_class_train.shape}, y_class_train: {y_class_train.shape}")
-    print(f"X_class_val: {X_class_val.shape}, y_class_val: {y_class_val.shape}")
-    print(f"X_class_test: {X_class_test.shape}, y_class_test: {y_class_test.shape}")
-
-    print("\nRegression Task:")
-    print(f"X_reg_train: {X_reg_train.shape}, y_reg_train: {y_reg_train.shape}")
-    print(f"X_reg_val: {X_reg_val.shape}, y_reg_val: {y_reg_val.shape}")
-    print(f"X_reg_test: {X_reg_test.shape}, y_reg_test: {y_reg_test.shape}")
-
-    return (X_class_train, y_class_train, X_class_val, y_class_val, X_class_test, y_class_test,
-            X_reg_train, y_reg_train, X_reg_val, y_reg_val, X_reg_test, y_reg_test)
-    
+    if type == "classification":
+        X_class_train = train[final_features].drop(columns=['time'])
+        y_class_train = train[target]
+        X_class_val = val[final_features].drop(columns=['time'])
+        y_class_val = val[target]
+        X_class_test = test[final_features].drop(columns=['time'])
+        y_class_test = test[target]
+        
+        # print the shapes of the datasets
+        
+        print("Classification Task:")
+        print(f"X_class_train: {X_class_train.shape}, y_class_train: {y_class_train.shape}")
+        print(f"X_class_val: {X_class_val.shape}, y_class_val: {y_class_val.shape}")
+        print(f"X_class_test: {X_class_test.shape}, y_class_test: {y_class_test.shape}")
+        
+        return X_class_train, y_class_train, X_class_val, y_class_val, X_class_test, y_class_test
+    if type == "regression":
+        X_reg_train = train[final_features].drop(columns=['time'])
+        y_reg_train = train[target]
+        X_reg_val = val[final_features].drop(columns=['time'])
+        y_reg_val = val[target]
+        X_reg_test = test[final_features].drop(columns=['time'])
+        y_reg_test = test[target]
+        
+        # print the shapes of the datasets
+        print("Regression Task:")
+        print(f"X_reg_train: {X_reg_train.shape}, y_reg_train: {y_reg_train.shape}")
+        print(f"X_reg_val: {X_reg_val.shape}, y_reg_val: {y_reg_val.shape}")
+        print(f"X_reg_test: {X_reg_test.shape}, y_reg_test: {y_reg_test.shape}")
+        
+        
+        return X_reg_train, y_reg_train, X_reg_val, y_reg_val, X_reg_test, y_reg_test
+   
 def at2_train_evaluate_regression_model(model, X_train, y_train, X_val, y_val, X_test, y_test, experiment_name:str, dict_results):
     """
     Trains and evaluates a regression model.
