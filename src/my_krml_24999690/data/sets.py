@@ -262,6 +262,14 @@ def add_cyclical_time_features(df, date_col):
     df["hour"] = df[date_col].dt.hour
     df["hour_sin"] = np.sin(2 * np.pi * df["hour"] / 24)
     df["hour_cos"] = np.cos(2 * np.pi * df["hour"] / 24)
+    
+    # month
+    df["month"] = df[date_col].dt.month
+    df["month_sin"] = np.sin(2 * np.pi * df["month"] / 12)
+    df["month_cos"] = np.cos(2 * np.pi * df["month"] / 12)
+    
+    # drop the intermediate columns
+    df = df.drop(columns=["time","doy", "dow", "hour", "month"])
 
     return df
 
