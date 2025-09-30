@@ -1,6 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score
@@ -226,6 +227,43 @@ def plot_categorical_distribution_with_target(df, col, target_col, figsize):
     plt.xlabel(target_col)
     plt.ylabel(col)
     plt.show()
+
+def add_cyclical_time_features(df, date_col):
+    """
+    Add cyclical time features (sin/cos) for day-of-year, day-of-week, and hour-of-day.
+    
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Input dataframe with a datetime column.
+    date_col : str, default="date"
+        Name of the datetime column.
+    
+    Returns
+    -------
+    pandas.DataFrame
+        DataFrame with new cyclical columns.
+    """
+    
+    # make sure the date_col is in datetime format
+    df[date_col] = pd.to_datetime(df[date_col])
+    
+    # day of year (1–365)
+    df["doy"] = df[date_col].dt.dayofyear
+    df["doy_sin"] = np.sin(2 * np.pi * df["doy"] / 365)
+    df["doy_cos"] = np.cos(2 * np.pi * df["doy"] / 365)
+
+    # day of week (0–6, Monday=0)
+    df["dow"] = df[date_col].dt.dayofweek
+    df["dow_sin"] = np.sin(2 * np.pi * df["dow"] / 7)
+    df["dow_cos"] = np.cos(2 * np.pi * df["dow"] / 7)
+
+    # hour of day (0–23)
+    df["hour"] = df[date_col].dt.hour
+    df["hour_sin"] = np.sin(2 * np.pi * df["hour"] / 24)
+    df["hour_cos"] = np.cos(2 * np.pi * df["hour"] / 24)
+
+    return df
 
 def plot_numerical_with_target(df, col, target_col, figsize, type):
     """Plot a histogram of a numerical column colored by a target variable.
