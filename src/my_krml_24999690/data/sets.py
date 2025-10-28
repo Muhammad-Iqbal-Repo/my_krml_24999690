@@ -705,6 +705,6 @@ def summarize_dataframe(df: pd.DataFrame, include_all: bool = False) -> dict:
         "column_info": pd.DataFrame({
             "column": df.columns,
             "dtype": df.dtypes.astype(str)
-        })
+        }).reset_index(drop=True)
     }
     return summary
