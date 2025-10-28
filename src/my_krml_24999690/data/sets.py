@@ -2,6 +2,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
+from pathlib import Path
+import os
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score
@@ -432,7 +434,7 @@ def at2_create_time_series_splits(df, validation_threshold, type):
         pre_2025_reg_data = df[df['time'].dt.year < 2025].copy()
 
         # the test set is all data from 2025 onwards
-        reg_test = df[df_regredfssion['time'].dt.year >= 2025].copy()
+        reg_test = df[df['time'].dt.year >= 2025].copy()
 
         # split the pre-2025 data into training and validation sets
         reg_val = pre_2025_reg_data[pre_2025_reg_data['time'] >= validation_threshold].copy()
@@ -544,10 +546,8 @@ def at2_train_evaluate_classification_model(model, X_train, y_train, X_val, y_va
     print(f"The results of the experiment '{experiment_name}' have been recorded.")
     print("-" * 50)
     
-def at2_X_y_split(train, val, test, final_features, target, type):
-    
-    # create docstring
-    
+def at2_prepare_training(train, val, test, final_features, target, type):
+       
     """
     Splits the data into features and target for classification and regression tasks.
     Args:
@@ -649,3 +649,35 @@ def at2_train_evaluate_regression_model(model, X_train, y_train, X_val, y_val, X
     print("-" * 50)
     print(f"The results of the experiment '{experiment_name}' have been recorded.")
     print("-" * 50)
+    
+def load_data_at3(dataset_dir: str | Path, pattern: str = "*.csv", sep=";") -> tuple[pd.DataFrame, list[str]]:
+    """
+    Load all CSVs in `dataset_dir` (semicolon-separated), sort each by 'timeOpen',
+    and concatenate into a single DataFrame.
+
+    Returns:
+        df_all (pd.DataFrame): concatenated DataFrame
+        file_names (list[str]): list of CSV file names found
+    """
+    dataset_path = Path(dataset_dir)
+    print("Current working directory:", Path.cwd())
+    print("Dataset directory:", dataset_path.resolve())
+
+    if not dataset_path.exists() or not dataset_path.is_dir():
+        raise FileNotFoundError(f"Directory not found: {dataset_path}")
+
+    files = list(dataset_path.glob(pattern))
+    file_names = [f.name for f in files]
+
+    if not files:
+        print("No CSV files found.")
+        return pd.DataFrame(), file_names
+
+    df_all = pd.DataFrame()
+    for f in files:
+        df = pd.read_csv(f, sep=sep)
+        df = df.sort_values(by='timeOpen', ascending=True).reset_index(drop=True)
+        print(f"Loaded {f.name} with shape {df.shape}")
+        df_all = pd.concat([df_all, df], ignore_index=True)
+
+    return df_all, file_names
