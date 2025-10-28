@@ -682,7 +682,7 @@ def load_data_at3(dataset_dir: str | Path, pattern: str = "*.csv", sep=";") -> t
 
     return df_all, file_names
 
-def summarize_dataframe(df: pd.DataFrame):
+def summarize_dataframe(df: pd.DataFrame, include_all: bool = False) -> dict:
     """
     Return key summaries for a given DataFrame:
     - head (first 5 rows)
@@ -696,10 +696,12 @@ def summarize_dataframe(df: pd.DataFrame):
     Returns:
         dict: containing head, tail, describe, and column_info
     """
+    describe_df = df.describe(include='all') if include_all else df.describe()
+
     summary = {
         "head": df.head(),
         "tail": df.tail(),
-        "describe": df.describe(include="all"),
+        "describe": describe_df,
         "column_info": pd.DataFrame({
             "column": df.columns,
             "dtype": df.dtypes.astype(str)
