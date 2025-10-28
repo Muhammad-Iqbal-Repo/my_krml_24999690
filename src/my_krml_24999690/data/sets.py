@@ -4,6 +4,7 @@ import seaborn as sns
 import numpy as np
 from pathlib import Path
 import os
+from typing import Sequence
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score
@@ -594,7 +595,7 @@ def at2_prepare_training(train, val, test, final_features, target, type):
         
         return X_reg_train, y_reg_train, X_reg_val, y_reg_val, X_reg_test, y_reg_test
    
-def at2_train_evaluate_regression_model(model, X_train, y_train, X_val, y_val, X_test, y_test, experiment_name:str, dict_results):
+def train_evaluate_regression_model(model, X_train, y_train, X_val, y_val, X_test, y_test, experiment_name:str, dict_results):
     """
     Trains and evaluates a regression model.
     Args:
@@ -708,3 +709,56 @@ def summarize_dataframe(df: pd.DataFrame, include_all: bool = False) -> dict:
         }).reset_index(drop=True)
     }
     return summary
+
+def split_time_series(
+    df: pd.DataFrame,
+    date_col: str = "",
+    target_col: str = "",
+    drop_cols: Sequence[str] = (),
+    train_ratio: float = 0.7,
+    val_ratio: float = 0.15,
+    test_ratio: float = 0.15,
+):
+    """
+    Split a time-ordered dataset into train, validation, and test sets.
+
+    Args:
+        df (pd.DataFrame): Full dataset.
+        date_col (str): Column name used for sorting by time.
+        target_col (str): Name of target column (y).
+        drop_cols (Sequence[str]): Columns to drop (e.g., time-like columns).
+        train_ratio (float): Fraction of data for training.
+        val_ratio (float): Fraction for validation.
+        test_ratio (float): Fraction for testing.
+
+    Returns:
+        tuple: (X_train, y_train, X_val, y_val, X_test, y_test)
+    """
+    # ensure sorted by time
+    df = df.sort_values(date_col).reset_index(drop=True)
+
+    # check ratio sum
+    if not abs(train_ratio + val_ratio + test_ratio - 1.0) < 1e-6:
+        raise ValueError("train_ratio + val_ratio + test_ratio must equal 1.0")
+
+    # compute split sizes
+    n = len(df)
+    train_size = int(n * train_ratio)
+    val_size = int(n * val_ratio)
+
+    # slice by index (time-ordered)
+    train_df = df.iloc[:train_size]
+    val_df = df.iloc[train_size:train_size + val_size]
+    test_df = df.iloc[train_size + val_size:]
+
+    # drop columns
+    train_df = train_df.drop(columns=drop_cols, errors="ignore")
+    val_df = val_df.drop(columns=drop_cols, errors="ignore")
+    test_df = test_df.drop(columns=drop_cols, errors="ignore")
+
+    # split X and y
+    X_train, y_train = train_df.drop(columns=[target_col]), train_df[target_col]
+    X_val, y_val = val_df.drop(columns=[target_col]), val_df[target_col]
+    X_test, y_test = test_df.drop(columns=[target_col]), test_df[target_col]
+
+    return X_train, y_train, X_val, y_val, X_test, y_test
