@@ -761,4 +761,6 @@ def split_time_series(
     X_val, y_val = val_df.drop(columns=[target_col]), val_df[target_col]
     X_test, y_test = test_df.drop(columns=[target_col]), test_df[target_col]
 
+    print(f"Train set: {X_train.shape}, Validation set: {X_val.shape}, Test set: {X_test.shape}")
+
     return X_train, y_train, X_val, y_val, X_test, y_test
