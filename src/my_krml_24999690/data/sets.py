@@ -681,3 +681,28 @@ def load_data_at3(dataset_dir: str | Path, pattern: str = "*.csv", sep=";") -> t
         df_all = pd.concat([df_all, df], ignore_index=True)
 
     return df_all, file_names
+
+def summarize_dataframe(df: pd.DataFrame):
+    """
+    Return key summaries for a given DataFrame:
+    - head (first 5 rows)
+    - tail (last 5 rows)
+    - descriptive statistics
+    - column info (name and dtype)
+    
+    Args:
+        df (pd.DataFrame): the dataframe to summarize
+    
+    Returns:
+        dict: containing head, tail, describe, and column_info
+    """
+    summary = {
+        "head": df.head(),
+        "tail": df.tail(),
+        "describe": df.describe(include="all"),
+        "column_info": pd.DataFrame({
+            "column": df.columns,
+            "dtype": df.dtypes.astype(str)
+        })
+    }
+    return summary
