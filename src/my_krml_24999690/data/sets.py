@@ -764,3 +764,56 @@ def split_time_series(
     print(f"Train set: {X_train.shape}, Validation set: {X_val.shape}, Test set: {X_test.shape}")
 
     return X_train, y_train, X_val, y_val, X_test, y_test
+
+import pandas as pd
+from typing import Iterable, Optional
+
+def add_lags_stats_and_marketcap_changes(
+    df: pd.DataFrame,
+    date_col: str,
+    value_cols: Optional[Iterable[str]] = None,
+    value_lags: Iterable[int] = (1, 3, 5),
+    market_cap_col: str = "marketCap",
+    marketcap_lags: Iterable[int] = (1, 7, 30),
+) -> pd.DataFrame:
+    """
+    Add lag features, rolling statistics, and market cap change metrics.
+
+    - Sorts by `date_col` ascending.
+    - For each value_col:
+        Adds lag, mean, max, min, median, std over each window in value_lags.
+    - For market cap:
+        Adds difference and percentage change for each n in marketcap_lags.
+
+    Returns:
+        pd.DataFrame with new columns added.
+    """
+    df = df.copy()
+
+    # Ensure proper datetime order
+    if not pd.api.types.is_datetime64_any_dtype(df[date_col]):
+        df[date_col] = pd.to_datetime(df[date_col], utc=True, errors="coerce")
+    df = df.sort_values(date_col).reset_index(drop=True)
+
+    # Default value columns if not given
+    if value_cols is None:
+        value_cols = [c for c in ["open", "high", "low", "close", "volume"] if c in df.columns]
+
+    # Add lag and rolling stats for value columns
+    for col in value_cols:
+        for n in value_lags:
+            df[f"{col}_lag{n}"] = df[col].shift(n)
+            df[f"{col}_mean{n}"] = df[col].rolling(window=n).mean()
+            df[f"{col}_max{n}"] = df[col].rolling(window=n).max()
+            df[f"{col}_min{n}"] = df[col].rolling(window=n).min()
+            df[f"{col}_median{n}"] = df[col].rolling(window=n).median()
+            df[f"{col}_std{n}"] = df[col].rolling(window=n).std()
+
+    # Add market cap diff and pct change for separate lags
+    if market_cap_col in df.columns:
+        for n in marketcap_lags:
+            lagged = df[market_cap_col].shift(n)
+            df[f"{market_cap_col}_diff_{n}"] = df[market_cap_col] - lagged
+            df[f"{market_cap_col}_pct_{n}"] = df[market_cap_col].div(lagged).sub(1.0)
+
+    return df
