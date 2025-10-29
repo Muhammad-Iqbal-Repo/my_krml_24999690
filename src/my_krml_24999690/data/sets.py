@@ -653,7 +653,7 @@ def train_evaluate_regression_model(model, X_train, y_train, X_val, y_val, X_tes
     df_results.index.name = 'experiment_name'
     df_results.reset_index(inplace=True)
 
-    print(df_results)
+    print(df_results.to_string(index=False, max_rows=250))
 
     print("-" * 50)
     print(f"The results of the experiment '{experiment_name}' have been recorded.")
