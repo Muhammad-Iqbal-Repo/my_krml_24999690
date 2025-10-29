@@ -647,6 +647,14 @@ def train_evaluate_regression_model(model, X_train, y_train, X_val, y_val, X_tes
     
     # print a separator
     
+    # convert the dict_results to a dataframe for better visualization
+
+    df_results = pd.DataFrame.from_dict(dict_results, orient='index')
+    df_results.index.name = 'experiment_name'
+    df_results.reset_index(inplace=True)
+
+    print(df_results)
+
     print("-" * 50)
     print(f"The results of the experiment '{experiment_name}' have been recorded.")
     print("-" * 50)
