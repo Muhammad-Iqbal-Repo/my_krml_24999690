@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 from pathlib import Path
+from sklearn.impute import SimpleImputer
 import os
 from typing import Sequence
 from sklearn.preprocessing import StandardScaler
@@ -170,17 +171,6 @@ def check_duplicates_df(df):
     """
     print(f"Number of duplicated rows in the dataframe: {df.duplicated().sum()}")
 
-def standardize_train(df, columns):
-    """Standardizes the specified columns in a training dataframe."""
-    """
-        Example:
-        standardized_train_df = standardize_train(iris_df, ['sepal_length', 'sepal_width'])
-        It will return the iris_df dataframe with standardized sepal_length and sepal_width columns
-    """
-    scaler = StandardScaler()
-    df[columns] = scaler.fit_transform(df[columns])
-    return df, scaler
-
 def plot_class_distribution(target_column, figsize, title, xlabel, ylabel):
     
     # count the unique values in the target column to serve as the basis for the coloring
@@ -299,7 +289,34 @@ def plot_numerical_with_target(df, col, target_col, figsize, type):
         plt.ylabel(target_col)
         plt.show()
 
-def standardize_test(df, columns, scaler):
+def standardize_train(df, columns):
+    """Standardizes the specified columns in a training dataframe."""
+    """
+        Example:
+        standardized_train_df = standardize_train(iris_df, ['sepal_length', 'sepal_width'])
+        It will return the iris_df dataframe with standardized sepal_length and sepal_width columns
+    """
+    if columns is None:
+        columns = df.select_dtypes(include=[np.number]).columns.tolist()
+
+    # store the columns used for scaling
+    cols_used = list(columns)
+
+    # avoiding NaN issues by imputing first
+    imputer = SimpleImputer(strategy="mean")
+    X_num = imputer.fit_transform(df[cols_used])
+
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X_num)
+
+    df_out = df.copy()
+    df_out[cols_used] = X_scaled
+
+    # return the scaled dataframe and the scaler object
+    scaler._imputer = imputer
+    return df_out, scaler, cols_used
+
+def standardize_test(df, cols_used, scaler):
     """Standardizes the specified columns in a testing dataframe."""
     """
         Example:
@@ -307,9 +324,18 @@ def standardize_test(df, columns, scaler):
         It will return the iris_df dataframe with standardized sepal_length and sepal_width columns
     """
     if scaler is None:
-        raise ValueError("Scaler must be provided for test data")
-    df[columns] = scaler.transform(df[columns])
-    return df
+        raise ValueError("Scaler must be provided for test/val data")
+    if any(col not in df.columns for col in cols_used):
+        missing = [c for c in cols_used if c not in df.columns]
+        raise ValueError(f"Columns missing in DataFrame: {missing}")
+
+    # impute with the training statistics, then scale
+    X_num = scaler._imputer.transform(df[cols_used])
+    X_scaled = scaler.transform(X_num)
+
+    df_out = df.copy()
+    df_out[cols_used] = X_scaled
+    return df_out
 
 def pop_target(df, target):
     """Separates the target column from the features in a dataframe."""
