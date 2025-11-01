@@ -854,16 +854,16 @@ def add_lags_stats_and_marketcap_changes(
     return df
 
 
-def plot_target_distribution_and_trend(df, target_col, date_col, figsize=(), log_scale=True):
+def plot_distribution_and_trend(df, col, date_col, figsize=(), log_scale=True):
     """
     Plots distribution (with KDE + optional log scale) and yearly trend of a continuous target.
 
     Parameters
     ----------
     df : pd.DataFrame
-        The input dataframe containing at least `target_col` and `date_col`.
-    target_col : str
-        Name of the continuous target column.
+        The input dataframe containing at least `col` and `date_col`.
+    col : str
+        Name of the continuous  column.
     date_col : str
         Name of the datetime column.
     log_scale : bool, optional (default=True)
@@ -871,18 +871,18 @@ def plot_target_distribution_and_trend(df, target_col, date_col, figsize=(), log
     """
     df = df.copy()
     df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
-    df = df.dropna(subset=[target_col, date_col])
-    df = df[df[target_col].notna()]
+    df = df.dropna(subset=[col, date_col])
+    df = df[df[col].notna()]
 
     # --- Distribution with KDE ---
-    x = df[target_col].dropna()
+    x = df[col].dropna()
     plt.figure(figsize=figsize if figsize else (6, 4))
     plt.hist(x, bins=50, edgecolor='black', alpha=0.6, density=True)
     kde = gaussian_kde(x)
     xs = np.linspace(x.min(), x.max(), 300)
     plt.plot(xs, kde(xs), color='red', lw=1.5, label='KDE')
-    plt.title(f"Distribution of {target_col}")
-    plt.xlabel(target_col)
+    plt.title(f"Distribution of {col}")
+    plt.xlabel(col)
     plt.ylabel("Density")
     plt.legend()
     plt.grid(alpha=0.3)
@@ -895,8 +895,8 @@ def plot_target_distribution_and_trend(df, target_col, date_col, figsize=(), log
         kde_log = gaussian_kde(np.log1p(x))
         xs_log = np.linspace(np.log1p(x).min(), np.log1p(x).max(), 300)
         plt.plot(xs_log, kde_log(xs_log), color='red', lw=1.5, label='KDE (log scale)')
-        plt.title(f"Log-Scaled Distribution of {target_col}")
-        plt.xlabel(f"log(1 + {target_col})")
+        plt.title(f"Log-Scaled Distribution of {col}")
+        plt.xlabel(f"log(1 + {col})")
         plt.ylabel("Density")
         plt.legend()
         plt.grid(alpha=0.3)
@@ -904,12 +904,12 @@ def plot_target_distribution_and_trend(df, target_col, date_col, figsize=(), log
 
     # --- Line chart per year ---
     df['year'] = df[date_col].dt.year
-    yearly_mean = df.groupby('year')[target_col].mean()
+    yearly_mean = df.groupby('year')[col].mean()
 
     plt.figure(figsize=figsize if figsize else (6, 4))
     plt.plot(yearly_mean.index, yearly_mean.values, marker='o')
-    plt.title(f"{target_col} Trend per Year")
+    plt.title(f"{col} Trend per Year")
     plt.xlabel("Year")
-    plt.ylabel(f"Average {target_col}")
+    plt.ylabel(f"Average {col}")
     plt.grid(alpha=0.3)
     plt.show()
