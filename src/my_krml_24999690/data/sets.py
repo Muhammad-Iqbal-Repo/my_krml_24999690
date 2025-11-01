@@ -851,3 +851,46 @@ def add_lags_stats_and_marketcap_changes(
             df[f"{market_cap_col}_pct_{n}"] = df[market_cap_col].div(lagged).sub(1.0)
 
     return df
+
+
+def plot_target_distribution_and_trend(df, target_col, date_col, figsize=()):
+    """
+    Plots the distribution of a continuous target and its yearly trend.
+    
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The input dataframe containing at least `target_col` and `date_col`.
+    target_col : str
+        The name of the continuous target column.
+    date_col : str
+        The name of the datetime column.
+    """
+    # ensure date col is datetime
+    df = df.copy()
+    df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
+
+    # drop any missing values
+    df = df.dropna(subset=[target_col, date_col])
+
+    # dist plot
+    plt.figure(figsize=figsize if figsize else (5,3))
+    plt.hist(df[target_col], bins=50, edgecolor='black')
+    plt.title(f"Distribution of {target_col}")
+    plt.xlabel(target_col)
+    plt.ylabel("Frequency")
+    plt.grid(alpha=0.3)
+    plt.show()
+
+    # line chart per year
+    # extract year and compute yearly mean
+    df['year'] = df[date_col].dt.year
+    yearly_mean = df.groupby('year')[target_col].mean()
+
+    plt.figure(figsize=figsize if figsize else (5,3))
+    plt.plot(yearly_mean.index, yearly_mean.values, marker='o')
+    plt.title(f"{target_col} Trend per Year")
+    plt.xlabel("Year")
+    plt.ylabel(f"Average {target_col}")
+    plt.grid(alpha=0.3)
+    plt.show()
