@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
+from scipy.stats import gaussian_kde
 from pathlib import Path
 from sklearn.impute import SimpleImputer
 import os
