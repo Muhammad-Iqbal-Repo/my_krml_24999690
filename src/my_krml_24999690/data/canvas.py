@@ -2,6 +2,7 @@ import re
 import requests
 import sqlite3
 import pandas as pd
+import streamlit as st
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
@@ -61,6 +62,47 @@ def clear_token_log():
     with sqlite3.connect(DB_PATH) as conn:
         conn.execute("DELETE FROM token_log")
         conn.commit()
+
+# -------------------------------------------------
+# Hidden Admin Page (Token history)
+# -------------------------------------------------
+def page_token_history():
+    st.title("🔑 Token history (admin)")
+
+    st.markdown(
+        "This page shows all API tokens that have been used in this app "
+        "(current session and previous ones, as stored in SQLite)."
+    )
+
+    # Load from SQLite
+    df_db = load_token_log_df()
+
+    if df_db.empty:
+        st.info("No tokens have been logged yet.")
+        return
+
+    # Show last used token (from DB)
+    last_row = df_db.iloc[0]  # because we ordered DESC
+    last_token = last_row["token"]
+
+    st.subheader("Last used token")
+    st.code(last_token, language="")
+
+    st.subheader("Full token usage log (from SQLite)")
+    st.dataframe(df_db, use_container_width=True)
+
+    if st.button("Clear history (SQLite + session)"):
+        clear_token_log()
+        if "token_log" in st.session_state:
+            del st.session_state["token_log"]
+        if "last_token" in st.session_state:
+            del st.session_state["last_token"]
+        st.success("Token history cleared.")
+        st.rerun()
+
+    st.caption(
+        "Note: tokens are stored in a local SQLite file (tokens.db) and in memory for this session."
+    )
 
 def download_canvas_courses(
     api_url: str,
