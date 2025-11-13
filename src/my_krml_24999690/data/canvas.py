@@ -28,7 +28,7 @@ def init_db():
         )
         conn.commit()
 
-def insert_token_row(action: str, api_url: str, token: str):
+def session_(action: str, api_url: str, token: str):
     """Insert a token usage row into SQLite."""
     if not token:
         return
