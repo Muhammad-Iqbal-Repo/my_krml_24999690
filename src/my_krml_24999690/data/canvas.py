@@ -1,9 +1,66 @@
 import re
 import requests
+import sqlite3
+import pandas as pd
+from datetime import datetime
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
 from canvasapi import Canvas
+
+DB_PATH = Path("tokens.db")
+
+def init_db():
+    """Create tokens table if it does not exist."""
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS token_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                time_utc TEXT,
+                action TEXT,
+                api_url TEXT,
+                token TEXT,
+                token_length INTEGER
+            )
+            """
+        )
+        conn.commit()
+
+def insert_token_row(action: str, api_url: str, token: str):
+    """Insert a token usage row into SQLite."""
+    if not token:
+        return
+    time_utc = datetime.utcnow().isoformat(timespec="seconds") + "Z"
+    api_url_clean = (api_url or "").rstrip("/")
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute(
+            """
+            INSERT INTO token_log (time_utc, action, api_url, token, token_length)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (time_utc, action, api_url_clean, token, len(token)),
+        )
+        conn.commit()
+def load_token_log_df() -> pd.DataFrame:
+    """Load full token log as a DataFrame (latest first)."""
+    if not DB_PATH.exists():
+        return pd.DataFrame()
+    with sqlite3.connect(DB_PATH) as conn:
+        df = pd.read_sql_query(
+            "SELECT id, time_utc, action, api_url, token, token_length "
+            "FROM token_log ORDER BY id DESC",
+            conn,
+        )
+    return df
+
+def clear_token_log():
+    """Delete all rows from token_log."""
+    if not DB_PATH.exists():
+        return
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute("DELETE FROM token_log")
+        conn.commit()
 
 def download_canvas_courses(
     api_url: str,
