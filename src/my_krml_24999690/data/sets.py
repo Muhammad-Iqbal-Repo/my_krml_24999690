@@ -2,6 +2,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
+import re
+import requests
+from urllib.parse import urljoin, urlparse
+from bs4 import BeautifulSoup
+from canvasapi import Canvas
 from scipy.stats import gaussian_kde
 from pathlib import Path
 from sklearn.impute import SimpleImputer
@@ -914,26 +919,55 @@ def plot_distribution_and_trend(df, col, date_col, figsize=(), log_scale=True):
     plt.grid(alpha=0.3)
     plt.show()
 
-def download_canvas_courses(api_url: str, api_key: str, course_ids: list[int] | None = None):
+def download_canvas_courses(
+    api_url: str,
+    api_key: str,
+    course_ids: list[int] | None = None,
+    output_dir: str | Path = "CanvasDownloads",
+    logger=None,
+    progress_cb=None,
+    allowed_exts: set[str] | None = None,
+):
     """
-    Download module content (Files, Pages, and linked files) from Canvas courses,
-    limited to specific file types:
-      pdf, doc, docx, txt, rtf, ppt, pptx, ipynb, py, jpg, jpeg, png, gif
+    Download module content (Files, Pages, and linked files) from Canvas courses.
+
+    Parameters
+    ----------
+    api_url : str
+    api_key : str
+    course_ids : list[int] | None
+        If None, downloads all active/invited courses.
+    output_dir : str | Path
+    logger : callable | None
+    progress_cb : callable | None
+        Called as progress_cb(done, total, message)
+    allowed_exts : set[str] | None
+        Set of allowed file extensions including leading dot, e.g.
+        {".pdf", ".docx", ".ipynb"}. If None, a sensible default set is used.
+
+    Returns
+    -------
+    list[dict]:
+        Per-course summaries.
     """
 
-    from canvasapi import Canvas
-    from pathlib import Path
-    import re, requests
-    from urllib.parse import urljoin, urlparse
-    from bs4 import BeautifulSoup
-
+    # ---- small logger helper ----
+    def log(msg: str):
+        if logger is not None:
+            logger(msg)
+        else:
+            print(msg)
+            
+        
     # ---- Configuration ----
-    api_url = api_url.rstrip("/")
-    ALLOWED_EXTS = {
+    api_url_clean = api_url.rstrip("/")
+
+    DEFAULT_EXTS = {
         ".pdf", ".doc", ".docx", ".txt", ".rtf", ".ppt", ".pptx",
         ".ipynb", ".py", ".jpg", ".jpeg", ".png", ".gif",
-        ".zip", ".rar", ".7z", ".tar", ".gz"
+        ".zip", ".rar", ".7z", ".tar", ".gz",
     }
+    ALLOWED_EXTS = allowed_exts or DEFAULT_EXTS
 
     # ---- Helpers ----
     def safe_name(name: str, maxlen: int = 120) -> str:
@@ -954,7 +988,7 @@ def download_canvas_courses(api_url: str, api_key: str, course_ids: list[int] | 
         return dirpath / f"{stem} ({i}){suffix}"
 
     def is_same_host(url: str) -> bool:
-        return urlparse(url).netloc == urlparse(api_url).netloc
+        return urlparse(url).netloc == urlparse(api_url_clean).netloc
 
     def infer_filename_from_headers(url: str, resp: requests.Response, fallback: str) -> str:
         cd = resp.headers.get("Content-Disposition") or resp.headers.get("content-disposition")
@@ -978,11 +1012,11 @@ def download_canvas_courses(api_url: str, api_key: str, course_ids: list[int] | 
         h = dict(BASE_HEADERS)
         if is_same_host(url) and api_key:
             h["Authorization"] = f"Bearer {api_key}"
-            h["Referer"] = api_url
+            h["Referer"] = api_url_clean
         return h
 
     def resolve_file_via_api(file_id: str):
-        endpoint = f"{api_url}/api/v1/files/{file_id}"
+        endpoint = f"{api_url_clean}/api/v1/files/{file_id}"
         try:
             r = session.get(endpoint, headers=authed_headers_for(endpoint), timeout=30)
             r.raise_for_status()
@@ -1005,28 +1039,34 @@ def download_canvas_courses(api_url: str, api_key: str, course_ids: list[int] | 
                     return None
                 target = unique_path(out_dir, fname)
                 with open(target, "wb") as f:
-                    for chunk in r.iter_content(262144):
+                    for chunk in r.iter_content(262_144):
                         if chunk:
                             f.write(chunk)
             return target
         except Exception as e:
-            print(f"    ❌ Failed to download: {url} -> {e}")
+            log(f"    ❌ Failed to download: {url} -> {e}")
             return None
 
     def extract_all_links_from_html(html_body: str, page_base_url: str) -> list[str]:
         soup = BeautifulSoup(html_body or "", "html.parser")
-        urls = []
+        urls: list[str] = []
+
+        # anchor href
         for a in soup.find_all("a", href=True):
             urls.append(urljoin(page_base_url, a["href"].strip()))
+        # images / embeds / objects
         for tag, attr in (("img", "src"), ("embed", "src"), ("object", "data")):
             for t in soup.find_all(tag):
                 val = t.get(attr)
                 if val:
                     urls.append(urljoin(page_base_url, val.strip()))
+        # Canvas-specific data-api-endpoint
         for el in soup.find_all(attrs={"data-api-endpoint": True}):
             api_ep = el.get("data-api-endpoint", "").strip()
             if api_ep:
                 urls.append(api_ep)
+
+        # dedupe (ignore fragments)
         seen, deduped = set(), []
         for u in urls:
             normalized = urlparse(u)._replace(fragment="").geturl()
@@ -1036,28 +1076,44 @@ def download_canvas_courses(api_url: str, api_key: str, course_ids: list[int] | 
         return deduped
 
     # ---- Main logic ----
-    canvas = Canvas(api_url, api_key)
-    root = Path("CanvasDownloads")
+    root = Path(output_dir)
     root.mkdir(parents=True, exist_ok=True)
+
+    canvas = Canvas(api_url_clean, api_key)
 
     courses = (
         [canvas.get_course(cid) for cid in course_ids]
-        if course_ids else
-        list(canvas.get_courses(enrollment_state="active,invited_or_pending"))
+        if course_ids
+        else list(canvas.get_courses(enrollment_state="active,invited_or_pending"))
     )
 
-    print(f"Found {len(courses)} course(s).")
+    num_courses = len(courses)
+    summaries: list[dict] = []
+
+    log(f"Found {num_courses} course(s).")
+
+    # Initialize progress at 0
+    if progress_cb is not None:
+        progress_cb(0, max(num_courses, 1), "Starting download...")
+
+    done_courses = 0
 
     for c in courses:
         try:
             course = canvas.get_course(c.id)
             course_dir = root / f"{safe_name(course.name or f'course_{course.id}')} ({course.id})"
             course_dir.mkdir(parents=True, exist_ok=True)
-            print(f"\n=== {course.id} – {course.name} ===")
+
+            log(f"\n=== {course.id} – {course.name} ===")
 
             modules = list(course.get_modules())
             modules.sort(key=lambda m: getattr(m, "position", 0))
-            downloaded_ids = set()
+            downloaded_ids: set[str] = set()
+
+            # per-course counters
+            files_downloaded = 0
+            pages_saved = 0
+            linked_files_downloaded = 0
 
             for module in modules:
                 mpos = getattr(module, "position", 0)
@@ -1079,7 +1135,8 @@ def download_canvas_courses(api_url: str, api_key: str, course_ids: list[int] | 
                             path = download_binary(best, module_dir, preferred_name=disp)
                             if path:
                                 downloaded_ids.add(file_id)
-                                print(f"  📥 {path.name}")
+                                files_downloaded += 1
+                                log(f"  📥 {path.name}")
                         continue
 
                     # ---- Pages ----
@@ -1095,12 +1152,12 @@ def download_canvas_courses(api_url: str, api_key: str, course_ids: list[int] | 
                             html_out.write_text(
                                 f"<!-- Saved from /courses/{course.id}/pages/{slug} -->\n"
                                 f"<!-- Title: {ptitle} -->\n{body}",
-                                encoding="utf-8"
+                                encoding="utf-8",
                             )
-                            print(f"  📝 {html_out.name}")
+                            pages_saved += 1
+                            log(f"  📝 {html_out.name}")
 
-                            # extract links
-                            base_url = f"{api_url}/courses/{course.id}/pages/{slug}"
+                            base_url = f"{api_url_clean}/courses/{course.id}/pages/{slug}"
                             for link in extract_all_links_from_html(body, base_url):
                                 fid = extract_file_id(link)
                                 if fid and fid not in downloaded_ids:
@@ -1109,10 +1166,32 @@ def download_canvas_courses(api_url: str, api_key: str, course_ids: list[int] | 
                                         path = download_binary(best, module_dir, preferred_name=disp)
                                         if path:
                                             downloaded_ids.add(fid)
-                                            print(f"    📎 {path.name}")
+                                            linked_files_downloaded += 1
+                                            log(f"    📎 {path.name}")
 
                         except Exception as e:
-                            print(f"  ❌ Page '{title}': {e}")
+                            log(f"  ❌ Page '{title}': {e}")
+
+            summaries.append(
+                {
+                    "course_id": course.id,
+                    "course_name": course.name,
+                    "files_downloaded": files_downloaded,
+                    "pages_saved": pages_saved,
+                    "linked_files_downloaded": linked_files_downloaded,
+                }
+            )
+
+            # ✅ Update progress AFTER finishing a course
+            done_courses += 1
+            if progress_cb is not None:
+                progress_cb(done_courses, max(num_courses, 1), f"Finished {course.name}")
 
         except Exception as e:
-            print(f"\n❌ Skipping course {c.id}: {e}")
+            log(f"\n❌ Skipping course {c.id}: {e}")
+
+    # Ensure we end at 100%
+    if progress_cb is not None:
+        progress_cb(max(num_courses, 1), max(num_courses, 1), "All courses finished")
+
+    return summaries
