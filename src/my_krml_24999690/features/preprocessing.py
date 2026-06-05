@@ -108,3 +108,10 @@ def create_dummies_test(df, dummy_columns, columns=None, drop_first=True):
     df_dummies = df_dummies[dummy_columns]
     
     return df_dummies
+
+def create_dummies(df, columns=None, drop_first=True):
+    """
+    Creates dummy variables for a dataframe in one simple step.
+    Best used when encoding the entire dataset BEFORE splitting.
+    """
+    return pd.get_dummies(df, columns=columns, drop_first=drop_first, dtype=int)

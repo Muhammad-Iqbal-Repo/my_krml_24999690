@@ -14,7 +14,12 @@ def plot_distribution(df, col, hue=None, title=None, figsize=(8, 5)):
 def plot_barchart(df, col, hue=None, title=None, figsize=(8, 5)):
     """Plots a beautiful bar chart (frequency count) of a categorical column or target class."""
     plt.figure(figsize=figsize)
-    sns.countplot(data=df, x=col, hue=hue, palette='Set2')
+    ax = sns.countplot(data=df, x=col, hue=hue, palette='Set2')
+    
+    # Automatically add numbers on top of each bar
+    for container in ax.containers:
+        ax.bar_label(container, padding=3)
+        
     plt.title(title if title else f"Count of {col}" + (f" by {hue}" if hue else ""))
     plt.xticks(rotation=45)
     plt.tight_layout()
