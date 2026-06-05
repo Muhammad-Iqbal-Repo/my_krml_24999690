@@ -9,7 +9,7 @@ from .features.engineering import add_cyclical_time_features, split_time_series,
 from .features.preprocessing import standardize_train, standardize_test, drop_columns, remove_duplicates, create_dummies_train, create_dummies_test
 from .models.training import train_classifier, train_regressor, cross_validate_model
 from .models.performance import evaluate_classification, evaluate_regression, print_metrics, kaggle_submission
-from .visualization.eda import plot_distribution, plot_categorical, plot_boxplot, plot_scatter, plot_correlation_heatmap, plot_pairplot
+from .visualization.eda import plot_distribution, plot_barchart, plot_categorical, plot_boxplot, plot_scatter, plot_correlation_heatmap, plot_pairplot
 
 __all__ = [
     "load_data_at2", "get_experiment_files", "load_data_at3", "summarize_dataframe",
@@ -19,5 +19,5 @@ __all__ = [
     "standardize_train", "standardize_test", "drop_columns", "remove_duplicates", "create_dummies_train", "create_dummies_test",
     "train_classifier", "train_regressor", "cross_validate_model",
     "evaluate_classification", "evaluate_regression", "print_metrics", "kaggle_submission",
-    "plot_distribution", "plot_categorical", "plot_boxplot", "plot_scatter", "plot_correlation_heatmap", "plot_pairplot"
+    "plot_distribution", "plot_barchart", "plot_categorical", "plot_boxplot", "plot_scatter", "plot_correlation_heatmap", "plot_pairplot"
 ]
