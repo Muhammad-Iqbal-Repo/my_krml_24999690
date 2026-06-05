@@ -68,6 +68,26 @@ def print_metrics(metrics_dict, title="Metrics Summary"):
             print(f"{key.upper().replace('_', ' ')}: {value:.4f}")
     print("-" * 25)
 
+def compare_metrics(**metrics_dicts):
+    """
+    Combines multiple metrics dictionaries into a single pandas DataFrame for easy comparison.
+    
+    Args:
+        **metrics_dicts: Keyword arguments mapping a split name (e.g., 'Train') to its metrics dictionary.
+        
+    Returns:
+        pd.DataFrame: A beautifully formatted dataframe comparing the metrics.
+    """
+    # Filter out None values just in case a user passes Val=None
+    valid_metrics = {k: v for k, v in metrics_dicts.items() if v is not None}
+    
+    df = pd.DataFrame(valid_metrics)
+    
+    # Clean up index names for better readability
+    df.index = [str(idx).upper().replace('_', ' ') for idx in df.index]
+    
+    return df
+
 def kaggle_submission(model, X_test, sample_path, output_path, target_col='target', predict_proba=True):
     """
     Generates a submission file for a Kaggle competition.

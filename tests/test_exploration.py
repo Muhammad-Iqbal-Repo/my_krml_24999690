@@ -1,5 +1,5 @@
 import pandas as pd
-from my_krml_24999690.data.exploration import drop_columns
+from my_krml_24999690.features.preprocessing import drop_columns
 
 def test_drop_columns():
     df = pd.DataFrame({

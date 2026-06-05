@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
+from sklearn.base import BaseEstimator, TransformerMixin
 
 def standardize_train(df, columns):
     """Standardizes the specified columns in a training dataframe."""
@@ -115,3 +116,41 @@ def create_dummies(df, columns=None, drop_first=True):
     Best used when encoding the entire dataset BEFORE splitting.
     """
     return pd.get_dummies(df, columns=columns, drop_first=drop_first, dtype=int)
+
+class DFStandardScaler(BaseEstimator, TransformerMixin):
+    """
+    A scikit-learn compatible transformer that standardizes numeric columns while
+    maintaining the pandas DataFrame structure (instead of converting to a numpy array).
+    """
+    def __init__(self, columns=None):
+        self.columns = columns
+        self.scaler_ = None
+        self.cols_used_ = None
+
+    def fit(self, X, y=None):
+        _, self.scaler_, self.cols_used_ = standardize_train(X, columns=self.columns)
+        return self
+
+    def transform(self, X):
+        if self.scaler_ is None:
+            raise ValueError("Transformer has not been fitted yet.")
+        return standardize_test(X, self.cols_used_, self.scaler_)
+
+class DFDummyEncoder(BaseEstimator, TransformerMixin):
+    """
+    A scikit-learn compatible transformer that applies dummy/one-hot encoding to pandas DataFrames.
+    It guarantees that the test set columns perfectly align with the training set columns.
+    """
+    def __init__(self, columns=None, drop_first=True):
+        self.columns = columns
+        self.drop_first = drop_first
+        self.dummy_columns_ = None
+
+    def fit(self, X, y=None):
+        _, self.dummy_columns_ = create_dummies_train(X, columns=self.columns, drop_first=self.drop_first)
+        return self
+
+    def transform(self, X):
+        if self.dummy_columns_ is None:
+            raise ValueError("Transformer has not been fitted yet.")
+        return create_dummies_test(X, self.dummy_columns_, columns=self.columns, drop_first=self.drop_first)
