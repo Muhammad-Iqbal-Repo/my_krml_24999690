@@ -50,3 +50,61 @@ def standardize_test(df, cols_used, scaler):
     df_out = df.copy()
     df_out[cols_used] = X_scaled
     return df_out
+
+def drop_columns(df, columns):
+    """
+    Safely drops specified columns from a dataframe.
+    Ignores columns that do not exist instead of throwing an error.
+    """
+    if isinstance(columns, str):
+        columns = [columns]
+    
+    # Only drop columns that actually exist in the dataframe
+    cols_to_drop = [c for c in columns if c in df.columns]
+    
+    if cols_to_drop:
+        print(f"Dropped {len(cols_to_drop)} columns.")
+        return df.drop(columns=cols_to_drop)
+    
+    return df.copy()
+
+def remove_duplicates(df, subset=None, keep='first'):
+    """
+    Removes duplicated rows from a dataframe and resets the index.
+    """
+    initial_len = len(df)
+    df_clean = df.drop_duplicates(subset=subset, keep=keep).reset_index(drop=True)
+    dropped = initial_len - len(df_clean)
+    
+    if dropped > 0:
+        print(f"Removed {dropped} duplicate rows.")
+    
+    return df_clean
+
+def create_dummies_train(df, columns=None, drop_first=True):
+    """
+    Creates dummy variables for training data and records the expected columns.
+    
+    Returns:
+        tuple: (df_dummies, dummy_columns_list)
+    """
+    df_dummies = pd.get_dummies(df, columns=columns, drop_first=drop_first, dtype=int)
+    dummy_columns = df_dummies.columns.tolist()
+    return df_dummies, dummy_columns
+
+def create_dummies_test(df, dummy_columns, columns=None, drop_first=True):
+    """
+    Creates dummy variables for test data, perfectly aligning columns with the training set.
+    """
+    df_dummies = pd.get_dummies(df, columns=columns, drop_first=drop_first, dtype=int)
+    
+    # 1. Add missing columns (categories that were in train but not in test)
+    missing_cols = set(dummy_columns) - set(df_dummies.columns)
+    for c in missing_cols:
+        df_dummies[c] = 0
+        
+    # 2. Reorder columns and safely ignore unexpected columns (categories in test but not train)
+    # By strictly selecting `dummy_columns`, we guarantee alignment with the model's expectations
+    df_dummies = df_dummies[dummy_columns]
+    
+    return df_dummies
