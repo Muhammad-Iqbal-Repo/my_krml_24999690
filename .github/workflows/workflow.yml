@@ -1,0 +1,39 @@
+name: Publish to TestPyPI
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Trigger when a version tag like v1.0.0 is pushed
+  workflow_dispatch:  # Allow manual trigger from the GitHub Actions tab
+
+jobs:
+  build-and-publish:
+    name: Build and publish to TestPyPI
+    runs-on: ubuntu-latest
+
+    # REQUIRED for Trusted Publishing via PyPI / TestPyPI
+    permissions:
+      id-token: write  # IMPORTANT: mandatory for trusted publishing
+      contents: read
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Poetry
+        run: |
+          pip install poetry
+
+      - name: Build package with Poetry
+        run: |
+          poetry build
+
+      - name: Publish package distributions to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/

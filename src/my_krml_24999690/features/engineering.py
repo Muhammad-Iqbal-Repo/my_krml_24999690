@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from typing import Sequence, Iterable, Optional
+from sklearn.model_selection import train_test_split
 
 def add_cyclical_time_features(df, date_col):
     """
@@ -164,3 +165,56 @@ def pop_target(df, target):
     y = df.pop(target)
     X = df
     return X, y
+
+def split_data(df: pd.DataFrame, target_col: str, test_size: float = 0.2, val_size: float = 0.0, stratify_col: Optional[str] = None, random_state: int = 42):
+    """
+    Robust function to split data randomly into train, validation, and test sets.
+    
+    Args:
+        df: Input dataframe.
+        target_col: The name of the target column.
+        test_size: Proportion of the dataset to include in the test split.
+        val_size: Proportion of the dataset to include in the validation split (taken from the remaining train set).
+        stratify_col: Column name to use for stratified splitting (usually the target column for classification).
+        random_state: Seed for reproducibility.
+        
+    Returns:
+        tuple: (X_train, y_train, X_val, y_val, X_test, y_test)
+               If val_size is 0, X_val and y_val will be None.
+    """
+    stratify_series = df[stratify_col] if stratify_col else None
+    
+    # First split into train/val and test
+    df_train_val, df_test = train_test_split(
+        df, test_size=test_size, random_state=random_state, stratify=stratify_series
+    )
+    
+    # Second split into train and val if requested
+    if val_size > 0:
+        # Calculate the adjusted validation proportion from the remaining training data
+        adj_val_size = val_size / (1.0 - test_size)
+        
+        stratify_val_series = df_train_val[stratify_col] if stratify_col else None
+        
+        df_train, df_val = train_test_split(
+            df_train_val, test_size=adj_val_size, random_state=random_state, stratify=stratify_val_series
+        )
+    else:
+        df_train = df_train_val
+        df_val = None
+
+    # Separate X and y
+    X_train = df_train.drop(columns=[target_col])
+    y_train = df_train[target_col]
+    
+    X_test = df_test.drop(columns=[target_col])
+    y_test = df_test[target_col]
+    
+    if df_val is not None:
+        X_val = df_val.drop(columns=[target_col])
+        y_val = df_val[target_col]
+        print(f"Splits -> Train: {len(X_train)} | Val: {len(X_val)} | Test: {len(X_test)}")
+        return X_train, y_train, X_val, y_val, X_test, y_test
+    else:
+        print(f"Splits -> Train: {len(X_train)} | Test: {len(X_test)}")
+        return X_train, y_train, None, None, X_test, y_test

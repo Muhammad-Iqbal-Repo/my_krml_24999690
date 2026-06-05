@@ -2,107 +2,75 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
-from scipy.stats import gaussian_kde
 
-def plot_class_distribution(target_column, figsize, title, xlabel, ylabel):
-    """
-        Example:
-        plot_class_distribution(df['species'], (10, 5), 'Iris Species Distribution', 'Species', 'Count')
-        It will plot a bar chart showing the distribution of the species in the iris dataset
-    """
-    
-    value_counts = target_column.value_counts()
+def plot_distribution(df, col, hue=None, figsize=(8, 5)):
+    """Plots the distribution of a numerical column (Histogram + KDE)."""
     plt.figure(figsize=figsize)
-    value_counts.plot(kind='bar', color=plt.cm.Paired.colors[:len(value_counts)])
-    plt.title(title)
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
-    plt.xticks(rotation=0)
-    plt.show()
-    
-    print(f"Class distribution:\n{value_counts}")
-    
-    
-def boxplot_regression(df, col, target_col, figsize):
-    """Plots a boxplot of a categorical column relative to a regression target variable."""
-    plt.figure(figsize=figsize)
-    sns.boxplot(data=df, x=col, y=target_col, palette='Set2', hue=col)
-    plt.title(f"Boxplot of '{target_col}' by '{col}'")
-    plt.xlabel(col)
-    plt.ylabel(target_col)
-    plt.show()
-    
-def plot_categorical_distribution_with_target(df, col, target_col, figsize):
-    """Plots the distribution of a categorical column relative to a target variable."""
-    plt.figure(figsize=figsize)
-    sns.countplot(data=df, x=col, hue=target_col, palette='Set2')
-    plt.title(f"Distribution of '{col}' by '{target_col}'")
-    plt.xlabel(target_col)
-    plt.ylabel(col)
+    sns.histplot(data=df, x=col, hue=hue, kde=True, palette='Set2' if hue else None)
+    plt.title(f"Distribution of {col}" + (f" by {hue}" if hue else ""))
+    plt.tight_layout()
     plt.show()
 
-def plot_numerical_with_target(df, col, target_col, figsize, type):
-    """Plot a histogram of a numerical column colored by a target variable."""
-    if type == "classification":
-        plt.figure(figsize=figsize)
-        sns.histplot(data=df, x=col, hue=target_col, bins=20, kde=True, palette='Set2')
-        plt.title(f"Distribution of '{col}' by '{target_col}'")
-        plt.xlabel(col)
-        plt.ylabel('Frequency')
-        plt.show()
+def plot_categorical(df, col, hue=None, figsize=(8, 5)):
+    """Plots the frequency count of a categorical column."""
+    plt.figure(figsize=figsize)
+    sns.countplot(data=df, x=col, hue=hue, palette='Set2')
+    plt.title(f"Count of {col}" + (f" by {hue}" if hue else ""))
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.show()
+
+def plot_boxplot(df, cat_col, num_col, hue=None, figsize=(8, 5)):
+    """Plots a boxplot to compare a numerical column across categories."""
+    plt.figure(figsize=figsize)
+    sns.boxplot(data=df, x=cat_col, y=num_col, hue=hue, palette='Set2')
+    plt.title(f"Boxplot of {num_col} by {cat_col}")
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.show()
+
+def plot_scatter(df, x_col, y_col, hue=None, trendline=False, figsize=(8, 5)):
+    """Plots a scatter plot between two numerical columns, optionally with a trendline."""
+    plt.figure(figsize=figsize)
+    if trendline and not hue:
+        # regplot computes and draws a linear regression line
+        sns.regplot(data=df, x=x_col, y=y_col, scatter_kws={'alpha':0.6}, line_kws={'color':'red'})
     else:
-        plt.figure(figsize=figsize)
-        sns.scatterplot(data=df, x=col, y=target_col)
-        plt.title(f"Scatter plot of '{col}' vs '{target_col}'")
-        plt.xlabel(col)
-        plt.ylabel(target_col)
-        plt.show()
-
-def plot_distribution_and_trend(df, col, date_col, figsize=(), log_scale=True):
-    """
-    Plots distribution (with KDE + optional log scale) and yearly trend of a continuous target.
-    """
-    df = df.copy()
-    df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
-    df = df.dropna(subset=[col, date_col])
-    df = df[df[col].notna()]
-
-    # --- Distribution with KDE ---
-    x = df[col].dropna()
-    plt.figure(figsize=figsize if figsize else (6, 4))
-    plt.hist(x, bins=50, edgecolor='black', alpha=0.6, density=True)
-    kde = gaussian_kde(x)
-    xs = np.linspace(x.min(), x.max(), 300)
-    plt.plot(xs, kde(xs), color='red', lw=1.5, label='KDE')
-    plt.title(f"Distribution of {col}")
-    plt.xlabel(col)
-    plt.ylabel("Density")
-    plt.legend()
-    plt.grid(alpha=0.3)
+        sns.scatterplot(data=df, x=x_col, y=y_col, hue=hue, palette='Set2', alpha=0.7)
+    
+    plt.title(f"Scatter plot: {x_col} vs {y_col}")
+    plt.tight_layout()
     plt.show()
 
-    # --- Optional log-scale plot ---
-    if log_scale:
-        plt.figure(figsize=figsize if figsize else (6, 4))
-        plt.hist(np.log1p(x), bins=50, edgecolor='black', alpha=0.6, density=True)
-        kde_log = gaussian_kde(np.log1p(x))
-        xs_log = np.linspace(np.log1p(x).min(), np.log1p(x).max(), 300)
-        plt.plot(xs_log, kde_log(xs_log), color='red', lw=1.5, label='KDE (log scale)')
-        plt.title(f"Log-Scaled Distribution of {col}")
-        plt.xlabel(f"log(1 + {col})")
-        plt.ylabel("Density")
-        plt.legend()
-        plt.grid(alpha=0.3)
-        plt.show()
+def plot_correlation_heatmap(df, columns=None, figsize=(10, 8)):
+    """Plots a beautiful correlation heatmap for numerical columns."""
+    plt.figure(figsize=figsize)
+    
+    # Filter numerical columns or use provided list
+    data = df[columns] if columns else df.select_dtypes(include=[np.number])
+        
+    corr = data.corr()
+    
+    # Create a mask for the upper triangle for a cleaner look
+    mask = np.triu(np.ones_like(corr, dtype=bool))
+    
+    sns.heatmap(corr, mask=mask, annot=True, fmt=".2f", cmap='coolwarm', vmin=-1, vmax=1, square=True)
+    plt.title("Correlation Heatmap")
+    plt.tight_layout()
+    plt.show()
 
-    # --- Line chart per year ---
-    df['year'] = df[date_col].dt.year
-    yearly_mean = df.groupby('year')[col].mean()
-
-    plt.figure(figsize=figsize if figsize else (6, 4))
-    plt.plot(yearly_mean.index, yearly_mean.values, marker='o')
-    plt.title(f"{col} Trend per Year")
-    plt.xlabel("Year")
-    plt.ylabel(f"Average {col}")
-    plt.grid(alpha=0.3)
+def plot_pairplot(df, columns=None, hue=None):
+    """Plots pairwise relationships across multiple numerical columns."""
+    if columns:
+        data = df[columns + ([hue] if hue and hue not in columns else [])]
+    else:
+        # Auto-select numerical columns + hue
+        num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+        if hue and hue not in num_cols:
+            num_cols.append(hue)
+        data = df[num_cols]
+        
+    # corner=True makes it a beautiful lower-triangle matrix
+    sns.pairplot(data, hue=hue, palette='Set2', corner=True)
+    plt.suptitle("Pairwise Relationships", y=1.02)
     plt.show()

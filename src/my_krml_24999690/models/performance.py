@@ -1,65 +1,92 @@
 import pandas as pd
-from sklearn.metrics import roc_auc_score
+import numpy as np
+from sklearn.metrics import (
+    accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, brier_score_loss,
+    mean_absolute_error, mean_squared_error, r2_score, mean_absolute_percentage_error
+)
 
-def evaluate_model(model, X_train, y_train, X_val, y_val):
-    """Evaluates a model's performance on training and testing sets."""
+def evaluate_classification(y_true, y_pred, y_pred_proba=None, average='macro'):
     """
-        Example:
-        evaluate_model(model, X_train, y_train, X_test, y_test)
-        It will print the accuracy of the model on training and testing sets
-    """
-    
-    model.fit(X_train, y_train)
-    
-    # Predict probabilities
-    y_train_pred_proba = model.predict_proba(X_train)[:, 1]
-    y_val_pred_proba = model.predict_proba(X_val)[:, 1]
-    
-    # Compute AUROC
-    train_score = roc_auc_score(y_train, y_train_pred_proba)
-    val_score = roc_auc_score(y_val, y_val_pred_proba)
-    
-    # Print results
-    model_name = model.__class__.__name__
-    print(f"{model_name} AUROC on training data: {train_score:.4f}")
-    print(f"{model_name} AUROC on validation data: {val_score:.4f}")
-    
-    return y_train_pred_proba, y_val_pred_proba
-    
+    Calculates comprehensive classification metrics.
 
-def print_auroc(y_true, y_pred_proba, type='train'):
-    """Prints the AUROC score given true labels and predicted probabilities."""
+    Args:
+        y_true: True labels.
+        y_pred: Predicted hard labels.
+        y_pred_proba: Predicted probabilities (for ROC AUC and Brier Score). Default is None.
+        average: The averaging strategy for multiclass targets ('binary', 'micro', 'macro', 'weighted').
+
+    Returns:
+        dict: A dictionary of classification metrics.
     """
-        Example:
-        print_auroc(y_test, y_test_pred_proba)
-        It will print the AUROC
+    metrics = {
+        "accuracy": float(accuracy_score(y_true, y_pred)),
+        "precision": float(precision_score(y_true, y_pred, average=average, zero_division=0)),
+        "recall": float(recall_score(y_true, y_pred, average=average, zero_division=0)),
+        "f1_score": float(f1_score(y_true, y_pred, average=average, zero_division=0)),
+    }
+
+    if y_pred_proba is not None:
+        try:
+            # Handle binary vs multiclass ROC AUC
+            if len(np.unique(y_true)) == 2:
+                # If y_pred_proba is 2D (Nx2), extract the positive class probabilities
+                probs = y_pred_proba[:, 1] if y_pred_proba.ndim == 2 else y_pred_proba
+                metrics["roc_auc"] = float(roc_auc_score(y_true, probs))
+                metrics["brier_score"] = float(brier_score_loss(y_true, probs))
+            else:
+                metrics["roc_auc"] = float(roc_auc_score(y_true, y_pred_proba, multi_class='ovr', average=average))
+        except Exception as e:
+            metrics["roc_auc"] = None
+            print(f"Warning: Could not calculate ROC AUC. {e}")
+
+    return metrics
+
+def evaluate_regression(y_true, y_pred):
     """
-    score = roc_auc_score(y_true, y_pred_proba)
-    if type == 'train':
-        print(f"AUROC Score on the training data: {score:.4f}")
+    Calculates comprehensive regression metrics.
+
+    Args:
+        y_true: True continuous values.
+        y_pred: Predicted continuous values.
+
+    Returns:
+        dict: A dictionary of regression metrics.
+    """
+    return {
+        "mae": float(mean_absolute_error(y_true, y_pred)),
+        "mse": float(mean_squared_error(y_true, y_pred)),
+        "rmse": float(np.sqrt(mean_squared_error(y_true, y_pred))),
+        "r2_score": float(r2_score(y_true, y_pred)),
+        "mape": float(mean_absolute_percentage_error(y_true, y_pred))
+    }
+
+def print_metrics(metrics_dict, title="Metrics Summary"):
+    """Pretty prints a dictionary of metrics."""
+    print(f"--- {title} ---")
+    for key, value in metrics_dict.items():
+        if value is not None:
+            print(f"{key.upper().replace('_', ' ')}: {value:.4f}")
+    print("-" * 25)
+
+def kaggle_submission(model, X_test, sample_path, output_path, target_col='target', predict_proba=True):
+    """
+    Generates a submission file for a Kaggle competition.
+    """
+    if predict_proba and hasattr(model, "predict_proba"):
+        # For classification competitions that require probability of positive class
+        preds = model.predict_proba(X_test)[:, 1]
     else:
-        print(f"AUROC Score on the validation data: {score:.4f}")
-
-def kaggle_submission(model, X_test, sample_path, output_path, target_col=''):
-    """Submit to Kaggle competition."""
-    """
-        Example:
-        kaggle_submission(model, X_test, 'sample_submission.csv', 'submission.csv', target_col='target')
-        It will create a submission file 'submission.csv' ready for Kaggle submission
-    """
-    
-    # Predict probabilities
-    y_test_pred_proba = model.predict_proba(X_test)[:, 1]
-    
+        # For regression or hard classification
+        preds = model.predict(X_test)
+        
     # Load sample submission
     submission_df = pd.read_csv(sample_path)
     
     # Assign predictions to the target column
-    submission_df[target_col] = y_test_pred_proba
+    submission_df[target_col] = preds
     
     # Save submission file
     submission_df.to_csv(output_path, index=False)
     
     print(f"Submission file saved to {output_path}")
-    
     return submission_df
