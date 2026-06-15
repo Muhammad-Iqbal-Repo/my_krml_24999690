@@ -1,7 +1,12 @@
 import pandas as pd
 import numpy as np
 import pytest
-from my_krml_24999690.features.engineering import add_cyclical_time_features, pop_target, split_time_series, add_lags_stats_and_marketcap_changes
+from my_krml_24999690.features.engineering import (
+    add_cyclical_time_features,
+    pop_target,
+    split_data,
+    split_time_series,
+)
 
 def test_add_cyclical_time_features():
     # Create dummy data
@@ -63,3 +68,49 @@ def test_split_time_series_invalid_ratios():
     df = pd.DataFrame({"date": ["2023-01-01"], "target": [1]})
     with pytest.raises(ValueError):
         split_time_series(df, date_col="date", target_col="target", train_ratio=0.5, val_ratio=0.5, test_ratio=0.5)
+
+
+def test_split_data_disables_continuous_stratification_for_both_splits():
+    df = pd.DataFrame({
+        "feature": range(40),
+        "target": np.arange(40, dtype=float),
+    })
+
+    with pytest.warns(UserWarning, match="appears continuous"):
+        splits = split_data(
+            df,
+            target_col="target",
+            test_size=0.2,
+            val_size=0.2,
+            stratify_col="target",
+            random_state=42,
+        )
+
+    X_train, _, X_val, _, X_test, _ = splits
+    assert len(X_train) == 24
+    assert len(X_val) == 8
+    assert len(X_test) == 8
+
+
+@pytest.mark.parametrize(
+    ("test_size", "val_size"),
+    [(0, 0), (1, 0), (0.8, 0.2), (0.2, -0.1)],
+)
+def test_split_data_rejects_invalid_sizes(test_size, val_size):
+    df = pd.DataFrame({"feature": range(10), "target": [0, 1] * 5})
+
+    with pytest.raises(ValueError):
+        split_data(
+            df,
+            target_col="target",
+            test_size=test_size,
+            val_size=val_size,
+        )
+
+
+def test_split_data_is_quiet_by_default(capsys):
+    df = pd.DataFrame({"feature": range(20), "target": [0, 1] * 10})
+
+    split_data(df, target_col="target", test_size=0.2)
+
+    assert capsys.readouterr().out == ""

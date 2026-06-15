@@ -1,9 +1,7 @@
 import re
-import requests
 from urllib.parse import urljoin, urlparse
-from bs4 import BeautifulSoup
-from canvasapi import Canvas
 from pathlib import Path
+
 
 def download_canvas_courses(
     api_url: str,
@@ -13,16 +11,31 @@ def download_canvas_courses(
     logger=None,
     progress_cb=None,
     allowed_exts: set[str] | None = None,
+    verbose: bool = False,
 ):
     """
     Download module content (Files, Pages, and linked files) from Canvas courses.
     """
+    try:
+        import requests
+        from bs4 import BeautifulSoup
+        from canvasapi import Canvas
+    except ImportError as exc:
+        raise ImportError(
+            "download_canvas_courses requires the optional 'canvas' "
+            "dependencies. Install them with: "
+            "pip install my_krml_24999690[canvas]"
+        ) from exc
 
-    # ---- small logger helper ----
+    if not api_url or not api_url.strip():
+        raise ValueError("api_url must not be empty.")
+    if not api_key or not api_key.strip():
+        raise ValueError("api_key must not be empty.")
+
     def log(msg: str):
         if logger is not None:
             logger(msg)
-        else:
+        elif verbose:
             print(msg)
             
         
@@ -34,7 +47,10 @@ def download_canvas_courses(
         ".ipynb", ".py", ".jpg", ".jpeg", ".png", ".gif",
         ".zip", ".rar", ".7z", ".tar", ".gz",
     }
-    ALLOWED_EXTS = allowed_exts or DEFAULT_EXTS
+    allowed_extensions = {
+        extension.lower()
+        for extension in (allowed_exts or DEFAULT_EXTS)
+    }
 
     # ---- Helpers ----
     def safe_name(name: str, maxlen: int = 120) -> str:
@@ -57,7 +73,7 @@ def download_canvas_courses(
     def is_same_host(url: str) -> bool:
         return urlparse(url).netloc == urlparse(api_url_clean).netloc
 
-    def infer_filename_from_headers(url: str, resp: requests.Response, fallback: str) -> str:
+    def infer_filename_from_headers(url: str, resp, fallback: str) -> str:
         cd = resp.headers.get("Content-Disposition") or resp.headers.get("content-disposition")
         if cd:
             m = re.search(r'filename\*?=(?:UTF-8\'\')?"?([^";]+)"?', cd)
@@ -95,7 +111,7 @@ def download_canvas_courses(
             return None, None
 
     def allowed_file_type(filename: str) -> bool:
-        return Path(filename).suffix.lower() in ALLOWED_EXTS
+        return Path(filename).suffix.lower() in allowed_extensions
 
     def download_binary(url: str, out_dir: Path, preferred_name: str | None = None) -> Path | None:
         try:

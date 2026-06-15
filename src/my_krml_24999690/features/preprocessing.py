@@ -52,7 +52,7 @@ def standardize_test(df, cols_used, scaler):
     df_out[cols_used] = X_scaled
     return df_out
 
-def drop_columns(df, columns):
+def drop_columns(df, columns, verbose=False):
     """
     Safely drops specified columns from a dataframe.
     Ignores columns that do not exist instead of throwing an error.
@@ -64,12 +64,13 @@ def drop_columns(df, columns):
     cols_to_drop = [c for c in columns if c in df.columns]
     
     if cols_to_drop:
-        print(f"Dropped {len(cols_to_drop)} columns.")
+        if verbose:
+            print(f"Dropped {len(cols_to_drop)} columns.")
         return df.drop(columns=cols_to_drop)
     
     return df.copy()
 
-def remove_duplicates(df, subset=None, keep='first'):
+def remove_duplicates(df, subset=None, keep='first', verbose=False):
     """
     Removes duplicated rows from a dataframe and resets the index.
     """
@@ -77,7 +78,7 @@ def remove_duplicates(df, subset=None, keep='first'):
     df_clean = df.drop_duplicates(subset=subset, keep=keep).reset_index(drop=True)
     dropped = initial_len - len(df_clean)
     
-    if dropped > 0:
+    if verbose and dropped > 0:
         print(f"Removed {dropped} duplicate rows.")
     
     return df_clean
@@ -113,7 +114,9 @@ def create_dummies_test(df, dummy_columns, columns=None, drop_first=True):
 def create_dummies(df, columns=None, drop_first=True):
     """
     Creates dummy variables for a dataframe in one simple step.
-    Best used when encoding the entire dataset BEFORE splitting.
+
+    Prefer fitting DFDummyEncoder on training data and transforming validation
+    and test data with the fitted encoder.
     """
     return pd.get_dummies(df, columns=columns, drop_first=drop_first, dtype=int)
 
@@ -154,3 +157,52 @@ class DFDummyEncoder(BaseEstimator, TransformerMixin):
         if self.dummy_columns_ is None:
             raise ValueError("Transformer has not been fitted yet.")
         return create_dummies_test(X, self.dummy_columns_, columns=self.columns, drop_first=self.drop_first)
+
+def balance_classes(
+    X_train,
+    y_train,
+    method="smote",
+    random_state=42,
+    verbose=False,
+):
+    """
+    Balances the classes in the training data using SMOTE or Random Undersampling.
+    Requires the 'imbalanced-learn' package (pip install imbalanced-learn).
+
+    Args:
+        X_train: Training features.
+        y_train: Training target.
+        method: 'smote' (oversampling) or 'undersample' (undersampling).
+        random_state: Seed for reproducibility.
+
+    Returns:
+        X_train_resampled, y_train_resampled
+    """
+    try:
+        if method.lower() == "smote":
+            from imblearn.over_sampling import SMOTE
+            sampler = SMOTE(random_state=random_state)
+        elif method.lower() == "undersample":
+            from imblearn.under_sampling import RandomUnderSampler
+            sampler = RandomUnderSampler(random_state=random_state)
+        else:
+            raise ValueError("method must be 'smote' or 'undersample'")
+
+        if verbose:
+            print(
+                f"Original dataset shape: "
+                f"{pd.Series(y_train).value_counts().to_dict()}"
+            )
+        X_res, y_res = sampler.fit_resample(X_train, y_train)
+        if verbose:
+            print(
+                f"Resampled dataset shape: "
+                f"{pd.Series(y_res).value_counts().to_dict()}"
+            )
+
+        return X_res, y_res
+    except ImportError as exc:
+        raise ImportError(
+            "balance_classes requires the optional 'balance' dependencies. "
+            "Install them with: pip install my_krml_24999690[balance]"
+        ) from exc

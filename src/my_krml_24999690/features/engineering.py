@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import warnings
 from typing import Sequence, Iterable, Optional
 from sklearn.model_selection import train_test_split
 
@@ -19,34 +20,36 @@ def add_cyclical_time_features(df, date_col):
     pandas.DataFrame
         DataFrame with new cyclical columns.
     """
+    df_copy = df.copy()
     
     # make sure the date_col is in datetime format
-    df[date_col] = pd.to_datetime(df[date_col])
+    df_copy[date_col] = pd.to_datetime(df_copy[date_col])
     
     # day of year (1–365)
-    df["doy"] = df[date_col].dt.dayofyear
-    df["doy_sin"] = np.sin(2 * np.pi * df["doy"] / 365)
-    df["doy_cos"] = np.cos(2 * np.pi * df["doy"] / 365)
+    df_copy["doy"] = df_copy[date_col].dt.dayofyear
+    df_copy["doy_sin"] = np.sin(2 * np.pi * df_copy["doy"] / 365)
+    df_copy["doy_cos"] = np.cos(2 * np.pi * df_copy["doy"] / 365)
 
     # day of week (0–6, Monday=0)
-    df["dow"] = df[date_col].dt.dayofweek
-    df["dow_sin"] = np.sin(2 * np.pi * df["dow"] / 7)
-    df["dow_cos"] = np.cos(2 * np.pi * df["dow"] / 7)
+    df_copy["dow"] = df_copy[date_col].dt.dayofweek
+    df_copy["dow_sin"] = np.sin(2 * np.pi * df_copy["dow"] / 7)
+    df_copy["dow_cos"] = np.cos(2 * np.pi * df_copy["dow"] / 7)
 
     # hour of day (0–23)
-    df["hour"] = df[date_col].dt.hour
-    df["hour_sin"] = np.sin(2 * np.pi * df["hour"] / 24)
-    df["hour_cos"] = np.cos(2 * np.pi * df["hour"] / 24)
+    df_copy["hour"] = df_copy[date_col].dt.hour
+    df_copy["hour_sin"] = np.sin(2 * np.pi * df_copy["hour"] / 24)
+    df_copy["hour_cos"] = np.cos(2 * np.pi * df_copy["hour"] / 24)
     
     # month
-    df["month"] = df[date_col].dt.month
-    df["month_sin"] = np.sin(2 * np.pi * df["month"] / 12)
-    df["month_cos"] = np.cos(2 * np.pi * df["month"] / 12)
+    df_copy["month"] = df_copy[date_col].dt.month
+    df_copy["month_sin"] = np.sin(2 * np.pi * df_copy["month"] / 12)
+    df_copy["month_cos"] = np.cos(2 * np.pi * df_copy["month"] / 12)
     
     # drop the intermediate columns
-    df = df.drop(columns=["doy", "dow", "hour", "month"])
+    df_copy = df_copy.drop(columns=["doy", "dow", "hour", "month"])
 
-    return df
+    return df_copy
+
 
 
 def split_time_series(
@@ -57,6 +60,7 @@ def split_time_series(
     train_ratio: float = 0.7,
     val_ratio: float = 0.15,
     test_ratio: float = 0.15,
+    verbose: bool = False,
 ):
     """
     Split a time-ordered dataset into train, validation, and test sets.
@@ -73,17 +77,26 @@ def split_time_series(
     Returns:
         tuple: (X_train, y_train, X_val, y_val, X_test, y_test)
     """
-    # ensure sorted by time
-    df = df.sort_values(date_col).reset_index(drop=True)
+    missing_columns = [
+        column for column in (date_col, target_col)
+        if column not in df.columns
+    ]
+    if missing_columns:
+        raise ValueError(f"Missing required columns: {missing_columns}")
 
-    # check ratio sum
-    if not abs(train_ratio + val_ratio + test_ratio - 1.0) < 1e-6:
+    ratios = (train_ratio, val_ratio, test_ratio)
+    if any(ratio <= 0 for ratio in ratios):
+        raise ValueError("train_ratio, val_ratio, and test_ratio must be positive.")
+    if not np.isclose(sum(ratios), 1.0):
         raise ValueError("train_ratio + val_ratio + test_ratio must equal 1.0")
 
-    # compute split sizes
+    df = df.sort_values(date_col).reset_index(drop=True)
+
     n = len(df)
     train_size = int(n * train_ratio)
     val_size = int(n * val_ratio)
+    if min(train_size, val_size, n - train_size - val_size) == 0:
+        raise ValueError("Each split must contain at least one row.")
 
     # slice by index (time-ordered)
     train_df = df.iloc[:train_size]
@@ -100,7 +113,11 @@ def split_time_series(
     X_val, y_val = val_df.drop(columns=[target_col]), val_df[target_col]
     X_test, y_test = test_df.drop(columns=[target_col]), test_df[target_col]
 
-    print(f"Train set: {X_train.shape}, Validation set: {X_val.shape}, Test set: {X_test.shape}")
+    if verbose:
+        print(
+            f"Train set: {X_train.shape}, Validation set: {X_val.shape}, "
+            f"Test set: {X_test.shape}"
+        )
 
     return X_train, y_train, X_val, y_val, X_test, y_test
 
@@ -162,11 +179,20 @@ def pop_target(df, target):
         X, y = pop_target(iris_df, 'species')
         It will return the features dataframe X and the target series y
     """
-    y = df.pop(target)
-    X = df
+    df_copy = df.copy()
+    y = df_copy.pop(target)
+    X = df_copy
     return X, y
 
-def split_data(df: pd.DataFrame, target_col: str, test_size: float = 0.2, val_size: float = 0.0, stratify_col: Optional[str] = None, random_state: int = 42):
+def split_data(
+    df: pd.DataFrame,
+    target_col: str,
+    test_size: float = 0.2,
+    val_size: float = 0.0,
+    stratify_col: Optional[str] = None,
+    random_state: int = 42,
+    verbose: bool = False,
+):
     """
     Robust function to split data randomly into train, validation, and test sets.
     
@@ -182,7 +208,35 @@ def split_data(df: pd.DataFrame, target_col: str, test_size: float = 0.2, val_si
         tuple: (X_train, y_train, X_val, y_val, X_test, y_test)
                If val_size is 0, X_val and y_val will be None.
     """
-    stratify_series = df[stratify_col] if stratify_col else None
+    if target_col not in df.columns:
+        raise ValueError(f"target_col {target_col!r} was not found.")
+    if not 0 < test_size < 1:
+        raise ValueError("test_size must be between 0 and 1.")
+    if not 0 <= val_size < 1:
+        raise ValueError("val_size must be between 0 and 1.")
+    if test_size + val_size >= 1:
+        raise ValueError("test_size + val_size must be less than 1.")
+    if stratify_col is not None and stratify_col not in df.columns:
+        raise ValueError(f"stratify_col {stratify_col!r} was not found.")
+
+    use_stratification = stratify_col is not None
+    if use_stratification:
+        if (
+            pd.api.types.is_numeric_dtype(df[stratify_col])
+            and df[stratify_col].nunique() > 20
+        ):
+            warnings.warn(
+                f"stratify_col {stratify_col!r} appears continuous; "
+                "stratification is disabled.",
+                UserWarning,
+                stacklevel=2,
+            )
+            use_stratification = False
+            stratify_series = None
+        else:
+            stratify_series = df[stratify_col]
+    else:
+        stratify_series = None
     
     # First split into train/val and test
     df_train_val, df_test = train_test_split(
@@ -194,7 +248,9 @@ def split_data(df: pd.DataFrame, target_col: str, test_size: float = 0.2, val_si
         # Calculate the adjusted validation proportion from the remaining training data
         adj_val_size = val_size / (1.0 - test_size)
         
-        stratify_val_series = df_train_val[stratify_col] if stratify_col else None
+        stratify_val_series = (
+            df_train_val[stratify_col] if use_stratification else None
+        )
         
         df_train, df_val = train_test_split(
             df_train_val, test_size=adj_val_size, random_state=random_state, stratify=stratify_val_series
@@ -213,8 +269,13 @@ def split_data(df: pd.DataFrame, target_col: str, test_size: float = 0.2, val_si
     if df_val is not None:
         X_val = df_val.drop(columns=[target_col])
         y_val = df_val[target_col]
-        print(f"Splits -> Train: {len(X_train)} | Val: {len(X_val)} | Test: {len(X_test)}")
+        if verbose:
+            print(
+                f"Splits -> Train: {len(X_train)} | Val: {len(X_val)} | "
+                f"Test: {len(X_test)}"
+            )
         return X_train, y_train, X_val, y_val, X_test, y_test
     else:
-        print(f"Splits -> Train: {len(X_train)} | Test: {len(X_test)}")
+        if verbose:
+            print(f"Splits -> Train: {len(X_train)} | Test: {len(X_test)}")
         return X_train, y_train, None, None, X_test, y_test

@@ -1,8 +1,13 @@
 import pandas as pd
 import numpy as np
+import builtins
+import sys
+import types
+import pytest
 from numpy.testing import assert_almost_equal
 from my_krml_24999690.features.preprocessing import (
-    standardize_train, standardize_test, DFStandardScaler, DFDummyEncoder
+    standardize_train, standardize_test, DFStandardScaler, DFDummyEncoder,
+    balance_classes,
 )
 from sklearn.pipeline import Pipeline
 
@@ -96,3 +101,46 @@ def test_pipeline_integration():
     # Columns should be num, cat_A, cat_B
     assert set(df_transformed.columns) == {"num", "cat_A", "cat_B"}
     assert_almost_equal(df_transformed["num"].mean(), 0.0, decimal=5)
+
+
+def test_balance_classes_raises_when_optional_dependency_is_missing(monkeypatch):
+    original_import = builtins.__import__
+
+    def blocked_import(name, *args, **kwargs):
+        if name.startswith("imblearn"):
+            raise ImportError("blocked for test")
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", blocked_import)
+
+    with pytest.raises(ImportError, match=r"\[balance\]"):
+        balance_classes([[0], [1]], [0, 1])
+
+
+def test_balance_classes_uses_requested_sampler(monkeypatch):
+    class FakeSampler:
+        def __init__(self, random_state):
+            self.random_state = random_state
+
+        def fit_resample(self, X, y):
+            return X + X, y + y
+
+    imblearn = types.ModuleType("imblearn")
+    over_sampling = types.ModuleType("imblearn.over_sampling")
+    under_sampling = types.ModuleType("imblearn.under_sampling")
+    over_sampling.SMOTE = FakeSampler
+    under_sampling.RandomUnderSampler = FakeSampler
+
+    monkeypatch.setitem(sys.modules, "imblearn", imblearn)
+    monkeypatch.setitem(sys.modules, "imblearn.over_sampling", over_sampling)
+    monkeypatch.setitem(sys.modules, "imblearn.under_sampling", under_sampling)
+
+    X_resampled, y_resampled = balance_classes(
+        [[0], [1]],
+        [0, 1],
+        method="undersample",
+        random_state=7,
+    )
+
+    assert X_resampled == [[0], [1], [0], [1]]
+    assert y_resampled == [0, 1, 0, 1]

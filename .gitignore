@@ -140,3 +140,7 @@ dmypy.json
 
 # MacOS
 .DS_Store
+
+# Local application data and downloads
+tokens.db
+CanvasDownloads/
