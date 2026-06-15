@@ -13,6 +13,7 @@ def test_supported_helpers_are_exported():
         "plot_confusion_matrix",
         "plot_feature_importance",
         "plot_roc_curve",
+        "summarize_classification_result",
         "tune_hyperparameters",
     }
 

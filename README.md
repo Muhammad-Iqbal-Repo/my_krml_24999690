@@ -134,6 +134,7 @@ The package root also exports:
 - `plot_feature_importance`
 - `plot_confusion_matrix`
 - `plot_roc_curve`
+- `summarize_classification_result`
 - `download_canvas_courses`
 
 Most reusable helpers are quiet by default. Use `verbose=True` on functions

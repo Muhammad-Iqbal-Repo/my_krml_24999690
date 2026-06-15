@@ -4,7 +4,7 @@ import warnings
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, brier_score_loss,
     mean_absolute_error, mean_squared_error, r2_score, mean_absolute_percentage_error,
-    confusion_matrix, roc_curve, auc
+    confusion_matrix, roc_curve, auc, ConfusionMatrixDisplay
 )
 from sklearn.utils.multiclass import unique_labels
 from sklearn.utils.validation import check_consistent_length, column_or_1d
@@ -252,6 +252,96 @@ def compare_metrics(**metrics_dicts):
     df.index = [str(idx).upper().replace('_', ' ') for idx in df.index]
     
     return df
+
+
+def summarize_classification_result(
+    result,
+    splits=("train", "val", "test"),
+    show_cm=False,
+):
+    """
+    Summarize classification metrics stored by train_classifier.
+
+    Binary confusion matrices include TN, FP, FN, and TP counts. Multiclass
+    results include the shared metrics without binary-only columns.
+    """
+    if not isinstance(result, dict):
+        raise TypeError("result must be a dictionary.")
+    if "model" not in result:
+        raise ValueError("result must contain a 'model' entry.")
+    if isinstance(splits, str):
+        splits = (splits,)
+
+    rows = []
+    model_name = type(result["model"]).__name__
+
+    for split in splits:
+        metrics = result.get(f"{split}_metrics")
+        if metrics is None:
+            continue
+        if not isinstance(metrics, dict):
+            raise TypeError(f"{split}_metrics must be a dictionary.")
+        if "confusion_matrix" not in metrics:
+            raise ValueError(
+                f"{split}_metrics must contain a 'confusion_matrix' entry."
+            )
+
+        matrix = np.asarray(metrics["confusion_matrix"])
+        if (
+            matrix.ndim != 2
+            or matrix.shape[0] != matrix.shape[1]
+            or matrix.shape[0] == 0
+        ):
+            raise ValueError(
+                f"{split} confusion matrix must be a non-empty square matrix."
+            )
+
+        labels = np.asarray(
+            metrics.get("labels", np.arange(matrix.shape[0]))
+        )
+        if labels.ndim != 1 or len(labels) != matrix.shape[0]:
+            raise ValueError(
+                f"{split} labels must match the confusion matrix size."
+            )
+
+        row = {
+            "model": model_name,
+            "split": split,
+            "accuracy": metrics.get("accuracy"),
+            "precision": metrics.get("precision"),
+            "recall": metrics.get("recall"),
+            "f1_score": metrics.get("f1_score"),
+            "roc_auc": metrics.get("roc_auc"),
+            "brier_score": metrics.get("brier_score"),
+        }
+
+        if matrix.shape == (2, 2):
+            tn, fp, fn, tp = matrix.ravel()
+            row.update({
+                "tn": tn,
+                "fp": fp,
+                "fn": fn,
+                "tp": tp,
+                "actual_negative": tn + fp,
+                "actual_positive": fn + tp,
+                "predicted_negative": tn + fn,
+                "predicted_positive": fp + tp,
+            })
+
+        rows.append(row)
+
+        if show_cm:
+            display = ConfusionMatrixDisplay(
+                confusion_matrix=matrix,
+                display_labels=labels,
+            )
+            display.plot(values_format="d")
+            display.ax_.set_title(
+                f"{model_name} - {split} Confusion Matrix"
+            )
+            plt.show()
+
+    return pd.DataFrame(rows).round(4)
 
 def kaggle_submission(
     model,

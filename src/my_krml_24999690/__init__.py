@@ -8,7 +8,7 @@ from .data.canvas_downloader import download_canvas_courses
 from .features.engineering import add_cyclical_time_features, split_time_series, split_data, add_lags_stats_and_marketcap_changes, pop_target
 from .features.preprocessing import standardize_train, standardize_test, drop_columns, remove_duplicates, create_dummies_train, create_dummies_test, create_dummies, DFStandardScaler, DFDummyEncoder, balance_classes
 from .models.training import train_classifier, train_regressor, cross_validate_model, tune_hyperparameters
-from .models.performance import evaluate_classification, evaluate_regression, print_metrics, compare_metrics, kaggle_submission, plot_feature_importance, plot_confusion_matrix, plot_roc_curve
+from .models.performance import evaluate_classification, evaluate_regression, print_metrics, compare_metrics, summarize_classification_result, kaggle_submission, plot_feature_importance, plot_confusion_matrix, plot_roc_curve
 from .models.tracking import ExperimentTracker
 from .visualization.eda import plot_distribution, plot_barchart, plot_categorical, plot_boxplot, plot_scatter, plot_correlation_heatmap, plot_pairplot
 
@@ -20,7 +20,7 @@ __all__ = [
     "standardize_train", "standardize_test", "drop_columns", "remove_duplicates", "create_dummies_train", "create_dummies_test", "create_dummies",
     "DFStandardScaler", "DFDummyEncoder", "balance_classes",
     "train_classifier", "train_regressor", "cross_validate_model", "tune_hyperparameters",
-    "evaluate_classification", "evaluate_regression", "print_metrics", "compare_metrics", "kaggle_submission",
+    "evaluate_classification", "evaluate_regression", "print_metrics", "compare_metrics", "summarize_classification_result", "kaggle_submission",
     "plot_feature_importance", "plot_confusion_matrix", "plot_roc_curve",
     "ExperimentTracker",
     "plot_distribution", "plot_barchart", "plot_categorical", "plot_boxplot", "plot_scatter", "plot_correlation_heatmap", "plot_pairplot"

@@ -778,6 +778,33 @@ print_metrics(metrics, title="Test metrics")
 comparison = compare_metrics(baseline=baseline_metrics, tuned=metrics)
 ```
 
+### `summarize_classification_result`
+
+```python
+summarize_classification_result(
+    result,
+    splits=("train", "val", "test"),
+    show_cm=False,
+)
+```
+
+Converts the dictionary returned by `train_classifier` into one dataframe row
+per available split. Binary results include TN, FP, FN, TP, actual-class
+totals, and predicted-class totals. Multiclass results include the shared
+metrics without binary-only columns.
+
+Set `show_cm=True` to display each available confusion matrix.
+
+```python
+from my_krml_24999690 import summarize_classification_result
+
+summary = summarize_classification_result(
+    classification_result,
+    splits=("train", "val"),
+    show_cm=True,
+)
+```
+
 ### `kaggle_submission`
 
 ```python

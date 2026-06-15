@@ -9,6 +9,7 @@ from my_krml_24999690.models.performance import (
     plot_feature_importance,
     plot_roc_curve,
     print_metrics,
+    summarize_classification_result,
 )
 
 
@@ -124,6 +125,83 @@ def test_metric_display_helpers_handle_confusion_matrix(capsys):
     comparison = compare_metrics(test=result)
     assert "CONFUSION MATRIX" not in comparison.index
     assert comparison.loc["ACCURACY", "test"] == pytest.approx(1.0)
+
+
+def test_summarize_classification_result_includes_binary_counts():
+    class FakeClassifier:
+        pass
+
+    result = {
+        "model": FakeClassifier(),
+        "train_metrics": {
+            "accuracy": 0.7,
+            "precision": 0.8,
+            "recall": 0.6,
+            "f1_score": 0.6857,
+            "roc_auc": 0.75,
+            "brier_score": 0.2,
+            "labels": ["no", "yes"],
+            "confusion_matrix": [[3, 1], [2, 4]],
+        },
+    }
+
+    summary = summarize_classification_result(result)
+
+    assert summary["model"].tolist() == ["FakeClassifier"]
+    assert summary["split"].tolist() == ["train"]
+    assert summary.loc[0, "accuracy"] == pytest.approx(0.7)
+    assert summary.loc[0, ["tn", "fp", "fn", "tp"]].tolist() == [3, 1, 2, 4]
+    assert summary.loc[0, "actual_negative"] == 4
+    assert summary.loc[0, "actual_positive"] == 6
+    assert summary.loc[0, "predicted_negative"] == 5
+    assert summary.loc[0, "predicted_positive"] == 5
+
+
+def test_summarize_classification_result_supports_multiclass_and_plotting(
+    monkeypatch,
+):
+    import matplotlib.pyplot as plt
+
+    class FakeClassifier:
+        pass
+
+    shown = []
+    monkeypatch.setattr(plt, "show", lambda: shown.append(True))
+    result = {
+        "model": FakeClassifier(),
+        "val_metrics": {
+            "accuracy": 0.8,
+            "precision": 0.8,
+            "recall": 0.8,
+            "f1_score": 0.8,
+            "roc_auc": 0.9,
+            "brier_score": None,
+            "labels": ["a", "b", "c"],
+            "confusion_matrix": [[2, 0, 0], [0, 1, 1], [0, 0, 2]],
+        },
+    }
+
+    summary = summarize_classification_result(
+        result,
+        splits="val",
+        show_cm=True,
+    )
+
+    assert summary["split"].tolist() == ["val"]
+    assert "tn" not in summary.columns
+    assert shown == [True]
+    plt.close("all")
+
+
+def test_summarize_classification_result_validates_input():
+    with pytest.raises(ValueError, match="'model'"):
+        summarize_classification_result({})
+
+    with pytest.raises(ValueError, match="square matrix"):
+        summarize_classification_result({
+            "model": object(),
+            "train_metrics": {"confusion_matrix": [[1, 2, 3], [4, 5, 6]]},
+        })
 
 
 def test_model_plot_helpers_return_axes(monkeypatch):
